@@ -8,12 +8,12 @@ export default defineConfig({
     proxy: {
       // For API requests
       '/api': {
-        target: 'http://13.232.73.121',
+        target: 'https://api.gobt.in',
         changeOrigin: true,
       },
       // For image requests - proxy the uploads path
       '/uploads': {
-        target: 'http://13.232.73.121',
+        target: 'https://api.gobt.in',
         changeOrigin: true,
       }
     }
