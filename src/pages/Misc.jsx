@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   getRefunds, processRefund,
   getSupportTickets, replyToTicket,
@@ -286,6 +287,7 @@ export function Support() {
 // ═══════════════════════════════════════════════════════
 export function Notifications() {
   const toast = useToast();
+  const navigate = useNavigate();
   const [notifs, setNotifs]   = useState([]);
   const [unread, setUnread]   = useState(0);
   const [loading, setL]       = useState(true);
@@ -319,6 +321,19 @@ export function Notifications() {
       setNotifs(n=>n.map(x=>x.id===id?{...x,is_read:true}:x));
       setUnread(u=>Math.max(0,u-1));
     } catch {}
+  };
+
+  const handleNotifClick = (n) => {
+    if (!n.is_read) markOne(n.id);
+    
+    // If notification has order data, navigate to orders with order_id
+    if (n.type === 'order' && n.data?.order_id) {
+      navigate('/orders', { state: { openOrderId: n.data.order_id } });
+    } else if (n.type === 'payment' && n.data?.order_id) {
+      navigate('/orders', { state: { openOrderId: n.data.order_id } });
+    } else if (n.type === 'refund') {
+      navigate('/refunds');
+    }
   };
 
   const broadcast = async () => {
@@ -357,16 +372,16 @@ export function Notifications() {
           : filtered.length===0 ? <EmptyState icon="🔔" title="No notifications" subtitle={tab==='unread'?'All caught up!':'No notifications yet'}/>
           : <div>
               {filtered.map((n,i)=>(
-                <div key={n.id} onClick={()=>!n.is_read&&markOne(n.id)}
+                <div key={n.id} onClick={() => handleNotifClick(n)}
                   style={{
                     display:'flex', gap:'0.875rem', padding:'1rem 1.25rem',
                     borderBottom:i<filtered.length-1?'1px solid var(--border)':'none',
                     background:!n.is_read?'rgba(224,85,40,0.04)':'transparent',
-                    cursor:!n.is_read?'pointer':'default',
+                    cursor:'pointer',
                     transition:'background var(--dur-fast)',
                   }}
-                  onMouseEnter={e=>{ if(!n.is_read) e.currentTarget.style.background='var(--bg-elevated)'; }}
-                  onMouseLeave={e=>{ if(!n.is_read) e.currentTarget.style.background='rgba(224,85,40,0.04)'; }}
+                  onMouseEnter={e=>{ e.currentTarget.style.background='var(--bg-elevated)'; }}
+                  onMouseLeave={e=>{ e.currentTarget.style.background=!n.is_read?'rgba(224,85,40,0.04)':'transparent'; }}
                 >
                   <div style={{width:42,height:42,borderRadius:11,background:'var(--bg-elevated)',border:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.125rem',flexShrink:0}}>
                     {EMOJI[n.type]||'🔔'}
@@ -378,6 +393,11 @@ export function Notifications() {
                     </div>
                     <p className="text-sm text-secondary" style={{lineHeight:1.5}}>{n.message}</p>
                     {n.location_id&&<span className="text-xs text-muted mt-1" style={{display:'block'}}>📍 Location #{n.location_id}</span>}
+                    {(n.type === 'order' || n.type === 'payment' || n.type === 'refund') && (
+                      <div className="text-xs" style={{marginTop:6,color:'var(--orange)',fontWeight:600}}>
+                        Click to view →
+                      </div>
+                    )}
                   </div>
                   {!n.is_read&&<div style={{width:8,height:8,borderRadius:'50%',background:'var(--accent)',marginTop:8,flexShrink:0,boxShadow:'0 0 6px var(--accent-glow)'}}/>}
                 </div>

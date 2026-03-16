@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { getOrders, getOrderDetail, updateOrderStatus, updatePaymentStatus } from '../services/api';
 import { Badge, Pagination, Select, Spinner, EmptyState, Modal, Field, PageHeader, OrderProgress, InfoRow } from '../components/UI';
 import { fmt, statusLabel, debounce } from '../utils';
@@ -22,6 +23,7 @@ const TRANSITIONS = {
 
 export default function Orders() {
   const toast = useToast();
+  const location = useLocation();
   const [orders, setOrders]   = useState([]);
   const [pag, setPag]         = useState(null);
   const [loading, setLoading] = useState(true);
@@ -44,6 +46,16 @@ export default function Orders() {
   }, []);
 
   useEffect(() => { load(filters); }, [filters]);
+
+  // Auto-open order drawer if navigated from notification
+  useEffect(() => {
+    if (location.state?.openOrderId && !loading) {
+      const orderId = location.state.openOrderId;
+      openDrawer(orderId);
+      // Clear the state so it doesn't re-trigger
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, loading]);
 
   const setF = (k,v) => setFilters(f => ({...f,[k]:v,page:1}));
 
@@ -258,16 +270,27 @@ function OrderDetail({ order, onClose, onStatus, onPay }) {
         <div className="card">
           <div className="card-header"><h4>🍕 Items ({order.items?.length||0})</h4></div>
           {(order.items||[]).map((item,i) => (
-            <div key={i} style={{display:'flex',gap:'0.75rem',padding:'0.875rem 1.25rem',borderBottom:`1px solid var(--border)`}}>
-              <div style={{width:44,height:44,borderRadius:9,overflow:'hidden',background:'var(--bg-overlay)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.25rem'}}>
+            <div key={i} style={{display:'flex',gap:'0.75rem',padding:'1rem 1.25rem',borderBottom:i<order.items.length-1?`1px solid var(--border)`:'none'}}>
+              <div style={{width:48,height:48,borderRadius:10,overflow:'hidden',background:'var(--bg-muted)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.5rem',border:'1px solid var(--border)'}}>
                 {item.image_url?<img src={`${item.image_url}`} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:'🍕'}
               </div>
               <div style={{flex:1,minWidth:0}}>
-                <div className="font-semi" style={{fontSize:'0.875rem'}}>{item.product_name}</div>
-                <div className="text-xs text-muted">{item.size_name}{item.crust_name?` · ${item.crust_name}`:''} × {item.quantity}</div>
-                {item.toppings?.length>0 && <div className="text-xs" style={{color:'var(--accent-bright)',marginTop:2}}>+ {item.toppings.map(t=>t.topping_name||t.name).join(', ')}</div>}
+                <div className="font-semi" style={{fontSize:'0.9375rem',color:'var(--text-primary)',marginBottom:3}}>{item.product_name}</div>
+                <div className="text-xs" style={{color:'var(--text-secondary)',marginBottom:2}}>
+                  {item.size_name}{item.crust_name?` · ${item.crust_name}`:''} × {item.quantity}
+                </div>
+                {item.toppings?.length>0 && (
+                  <div className="text-xs" style={{color:'var(--orange)',marginTop:4,fontWeight:600}}>
+                    + {item.toppings.map(t=>t.topping_name||t.name).join(', ')}
+                  </div>
+                )}
+                {item.special_instructions && (
+                  <div className="text-xs" style={{color:'var(--text-muted)',marginTop:4,fontStyle:'italic'}}>
+                    Note: {item.special_instructions}
+                  </div>
+                )}
               </div>
-              <div className="font-bold nowrap">{fmt.currency(item.total_price)}</div>
+              <div className="font-bold nowrap" style={{fontSize:'0.9375rem',color:'var(--text-primary)'}}>{fmt.currency(item.total_price)}</div>
             </div>
           ))}
         </div>

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context';
 import { Spinner } from '../components/UI';
+import { getLocations } from '../services/api';
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -8,6 +9,16 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw]   = useState(false);
+  const [locations, setLocations] = useState([]);
+  const [loadingLocs, setLoadingLocs] = useState(true);
+
+  useEffect(() => {
+    // Fetch locations for super admin selection
+    getLocations()
+      .then(r => setLocations(r.data || []))
+      .catch(() => {})
+      .finally(() => setLoadingLocs(false));
+  }, []);
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -55,11 +66,23 @@ export default function Login() {
 
           <div className="form-group">
             <label className="form-label">
-              Branch Location ID
+              Branch Location
               <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 6 }}>optional — super admin only</span>
             </label>
-            <input className="input" type="number" value={form.location_id} onChange={set('location_id')}
-              placeholder="Leave empty for all branches" />
+            {loadingLocs ? (
+              <div className="input" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
+                <Spinner className="spinner-sm" /> Loading locations...
+              </div>
+            ) : (
+              <select className="input" value={form.location_id} onChange={set('location_id')}>
+                <option value="">All branches (super admin)</option>
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.name} {loc.city ? `— ${loc.city}` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {error && (
