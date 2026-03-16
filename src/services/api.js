@@ -1,4 +1,4 @@
-const BASE = '/api/admin';
+const BASE = 'http://13.232.73.121/api/admin';
 
 let _token = null;
 
