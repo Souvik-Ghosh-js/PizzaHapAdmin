@@ -3,13 +3,13 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import { AuthProvider, ToastProvider, useAuth } from './context';
 import { getNotifications } from './services/api';
 
-import Sidebar     from './components/Sidebar';
-import Header      from './components/Header';
-import Login       from './pages/Login';
-import Dashboard   from './pages/Dashboard';
-import Orders      from './pages/Orders';
-import InHouse     from './pages/InHouse';
-import { Users, Menu, Toppings, Locations, Coupons } from './pages/Entities';
+import Sidebar   from './components/Sidebar';
+import Header    from './components/Header';
+import Login     from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Orders    from './pages/Orders';
+import InHouse   from './pages/InHouse';
+import { Users, Menu, Categories, Crusts, Toppings, Locations, Coupons } from './pages/Entities';
 import { Refunds, Support, Notifications } from './pages/Misc';
 
 function Layout() {
@@ -21,7 +21,7 @@ function Layout() {
     let cancelled = false;
     const fetchUnread = () => {
       getNotifications()
-        .then(r => { if(!cancelled) setUnread(r.data?.unread_count || 0); })
+        .then(r => { if (!cancelled) setUnread(r.data?.unread_count || 0); })
         .catch(() => {});
     };
     fetchUnread();
@@ -41,6 +41,8 @@ function Layout() {
             <Route path="/inhouse"       element={<InHouse />} />
             <Route path="/users"         element={<Users />} />
             <Route path="/menu"          element={<Menu />} />
+            <Route path="/categories"    element={<Categories />} />
+            <Route path="/crusts"        element={<Crusts />} />
             <Route path="/toppings"      element={<Toppings />} />
             <Route path="/locations"     element={<Locations />} />
             <Route path="/coupons"       element={<Coupons />} />

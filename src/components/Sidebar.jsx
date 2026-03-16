@@ -5,27 +5,29 @@ const NAV_SECTIONS = [
   {
     label: 'Main',
     items: [
-      { to: '/',       icon: '◈', label: 'Dashboard'  },
-      { to: '/orders', icon: '📦', label: 'Orders'     },
-      { to: '/inhouse',icon: '🧾', label: 'In-House'   },
+      { to: '/',        icon: '◈',  label: 'Dashboard' },
+      { to: '/orders',  icon: '📦', label: 'Orders'    },
+      { to: '/inhouse', icon: '🧾', label: 'In-House'  },
     ]
   },
   {
     label: 'Catalog',
     items: [
-      { to: '/menu',     icon: '🍕', label: 'Products'  },
-      { to: '/toppings', icon: '🫑', label: 'Toppings'  },
-      { to: '/locations',icon: '📍', label: 'Locations' },
-      { to: '/coupons',  icon: '🎫', label: 'Coupons'   },
+      { to: '/categories', icon: '🗂️', label: 'Categories' },
+      { to: '/menu',       icon: '🍕',  label: 'Products'   },
+      { to: '/crusts',     icon: '🍞',  label: 'Crust Types'},
+      { to: '/toppings',   icon: '🫑',  label: 'Toppings'   },
+      { to: '/locations',  icon: '📍',  label: 'Locations'  },
+      { to: '/coupons',    icon: '🎫',  label: 'Coupons'    },
     ]
   },
   {
     label: 'Operations',
     items: [
-      { to: '/users',        icon: '👥', label: 'Users'         },
-      { to: '/refunds',      icon: '↩️', label: 'Refunds'       },
-      { to: '/support',      icon: '💬', label: 'Support'       },
-      { to: '/notifications',icon: '🔔', label: 'Notifications' },
+      { to: '/users',         icon: '👥', label: 'Users'         },
+      { to: '/refunds',       icon: '↩️', label: 'Refunds'       },
+      { to: '/support',       icon: '💬', label: 'Support'       },
+      { to: '/notifications', icon: '🔔', label: 'Notifications' },
     ]
   },
 ];
@@ -33,7 +35,6 @@ const NAV_SECTIONS = [
 export default function Sidebar({ collapsed, onToggle, unreadCount }) {
   const { admin, signOut } = useAuth();
   const { pathname } = useLocation();
-
   const isActive = (to) => to === '/' ? pathname === '/' : pathname.startsWith(to);
 
   return (
@@ -53,11 +54,11 @@ export default function Sidebar({ collapsed, onToggle, unreadCount }) {
       </div>
 
       {/* Location chip */}
-      {!collapsed && admin?.location_name && (
+      {!collapsed && (
         <div className="sidebar-location">
           <div className="location-chip">
             <span>📍</span>
-            <span className="truncate">{admin.location_name}</span>
+            <span className="truncate">{admin?.location_name || 'All Branches'}</span>
           </div>
         </div>
       )}
@@ -68,15 +69,15 @@ export default function Sidebar({ collapsed, onToggle, unreadCount }) {
           <div className="nav-section" key={sec.label}>
             {!collapsed && <div className="nav-section-label">{sec.label}</div>}
             {sec.items.map(({ to, icon, label }) => {
-              const active = isActive(to);
-              const hasNotif = to === '/notifications' && unreadCount > 0;
+              const active    = isActive(to);
+              const hasNotif  = to === '/notifications' && unreadCount > 0;
               return (
                 <NavLink key={to} to={to} className={`nav-item ${active ? 'active' : ''}`}>
                   <span className="nav-icon">{icon}</span>
                   {!collapsed && <span className="nav-label">{label}</span>}
                   {hasNotif && !collapsed && <span className="nav-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                   {hasNotif && collapsed && (
-                    <span style={{ position:'absolute', top:4, right:4, width:7, height:7, background:'var(--accent)', borderRadius:'50%' }} />
+                    <span style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, background: 'var(--accent)', borderRadius: '50%' }} />
                   )}
                 </NavLink>
               );
@@ -92,12 +93,12 @@ export default function Sidebar({ collapsed, onToggle, unreadCount }) {
             <div className="admin-avatar">{(admin?.name || 'A').charAt(0).toUpperCase()}</div>
             <div className="admin-info">
               <div className="admin-name">{admin?.name || 'Admin'}</div>
-              <div className="admin-role">{(admin?.role || '').replace(/_/g,' ')}</div>
+              <div className="admin-role">{(admin?.role || '').replace(/_/g, ' ')}</div>
             </div>
             <button className="logout-btn" onClick={signOut} title="Sign out">⎋</button>
           </div>
         ) : (
-          <button className="logout-btn" onClick={signOut} title="Sign out" style={{ width:'100%', padding:'6px' }}>⎋</button>
+          <button className="logout-btn" onClick={signOut} title="Sign out" style={{ width: '100%', padding: '6px' }}>⎋</button>
         )}
       </div>
     </aside>

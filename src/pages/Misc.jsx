@@ -94,7 +94,7 @@ export function Refunds() {
           <button className="btn btn-danger" onClick={()=>handle('reject')} disabled={acting}>
             {acting?<Spinner className="spinner-sm"/>:'Reject'}
           </button>
-          <button className="btn btn-success" onClick={()=>handle('approve')} disabled={acting}>
+          <button className="btn btn-success" onClick={()=>handle('process')} disabled={acting}>
             {acting?<Spinner className="spinner-sm"/>:'Approve & Refund'}
           </button>
         </>}>

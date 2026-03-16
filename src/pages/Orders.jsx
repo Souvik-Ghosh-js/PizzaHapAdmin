@@ -18,7 +18,7 @@ const PAY_OPTS = [
 const TRANSITIONS = {
   pending:['confirmed','cancelled'], confirmed:['preparing','cancelled'],
   preparing:['out_for_delivery','cancelled'], out_for_delivery:['delivered'],
-  delivered:['refund_requested'], cancelled:[], refund_requested:[], refunded:[],
+  delivered:['refund_requested'], cancelled:[], refund_requested:['refunded'], refunded:[],
 };
 
 export default function Orders() {
@@ -143,8 +143,9 @@ export default function Orders() {
                           {(TRANSITIONS[o.status]||[]).length > 0 && (
                             <button className="btn btn-sm btn-ghost" onClick={()=>{setSM(o);setSel(TRANSITIONS[o.status][0]);setNote('');}}>↑ Status</button>
                           )}
-                          {o.payment_method==='cash_on_delivery' && o.payment_status!=='paid' && (
-                            <button className="btn btn-sm btn-success" onClick={()=>{setPM(o);setSel('paid');setNote('');}}>$ Paid</button>
+                          {/* Payment status update button - Show for all orders where payment is pending */}
+                          {o.payment_status !== 'paid' && o.payment_status !== 'refunded' && (
+                            <button className="btn btn-sm btn-success" onClick={()=>{setPM(o);setSel('paid');setNote('');}}>$ Mark Paid</button>
                           )}
                         </div>
                       </td>
@@ -187,14 +188,27 @@ export default function Orders() {
           </button>
         </>}>
         <div style={{display:'flex',flexDirection:'column',gap:'1rem'}}>
-          <div style={{background:'var(--green-dim)',border:'1px solid var(--green-border)',borderRadius:'var(--r-md)',padding:'0.75rem 1rem',fontSize:'0.8rem',color:'var(--green)'}}>
-            💵 Order: <strong>{payModal?.order_number}</strong> · {fmt.currency(payModal?.total_amount)}
+          <div style={{
+            background: payModal?.payment_status === 'paid' ? 'var(--green-dim)' : 'var(--yellow-dim)',
+            border: '1px solid ' + (payModal?.payment_status === 'paid' ? 'var(--green-border)' : 'var(--yellow-border)'),
+            borderRadius: 'var(--r-md)',
+            padding: '0.75rem 1rem',
+            fontSize: '0.8rem',
+            color: payModal?.payment_status === 'paid' ? 'var(--green)' : 'var(--yellow-dark)'
+          }}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span>Current Payment Status:</span>
+              <Badge status={payModal?.payment_status} />
+            </div>
+            <div style={{marginTop:'0.5rem',fontWeight:600}}>
+              Order: {payModal?.order_number} · {fmt.currency(payModal?.total_amount)}
+            </div>
           </div>
           <Field label="Payment Status" required>
             <Select value={sel} onChange={setSel} options={PAY_OPTS} placeholder="Select status" />
           </Field>
           <Field label="Note (optional)">
-            <input className="input" value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g. Cash received at counter"/>
+            <input className="input" value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g. Cash received at counter / Online payment confirmed"/>
           </Field>
         </div>
       </Modal>
@@ -240,12 +254,15 @@ function OrderDetail({ order, onClose, onStatus, onPay }) {
         {/* Payment info */}
         <div style={{display:'flex',gap:'0.625rem'}}>
           <div style={{flex:1,background:'var(--bg-elevated)',border:'1px solid var(--border)',borderRadius:'var(--r-md)',padding:'0.75rem',textAlign:'center'}}>
-            <div className="text-xs text-muted mb-1">Payment</div>
+            <div className="text-xs text-muted mb-1">Payment Method</div>
             <div className="font-semi" style={{fontSize:'0.8rem',textTransform:'capitalize'}}>{(order.payment_method||'').replace(/_/g,' ')}</div>
           </div>
-          <div style={{flex:1,background:order.payment_status==='paid'?'var(--green-dim)':'var(--amber-dim)',border:`1px solid ${order.payment_status==='paid'?'var(--green-border)':'var(--amber-border)'}`,borderRadius:'var(--r-md)',padding:'0.75rem',textAlign:'center'}}>
-            <div className="text-xs text-muted mb-1">Pay Status</div>
-            <div className="font-bold" style={{fontSize:'0.875rem',color:order.payment_status==='paid'?'var(--green)':'var(--amber)'}}>{statusLabel(order.payment_status)}</div>
+          <div style={{flex:1,background:order.payment_status==='paid'?'var(--green-dim)':order.payment_status==='failed'?'var(--red-dim)':'var(--amber-dim)',border:`1px solid ${order.payment_status==='paid'?'var(--green-border)':order.payment_status==='failed'?'var(--red-border)':'var(--amber-border)'}`,borderRadius:'var(--r-md)',padding:'0.75rem',textAlign:'center'}}>
+            <div className="text-xs text-muted mb-1">Payment Status</div>
+            <div className="font-bold" style={{
+              fontSize:'0.875rem',
+              color:order.payment_status==='paid'?'var(--green)':order.payment_status==='failed'?'var(--red)':'var(--amber)'
+            }}>{statusLabel(order.payment_status)}</div>
           </div>
           <div style={{flex:1,background:'var(--accent-dim)',border:'1px solid var(--border-accent)',borderRadius:'var(--r-md)',padding:'0.75rem',textAlign:'center'}}>
             <div className="text-xs text-muted mb-1">Total</div>
@@ -303,7 +320,7 @@ function OrderDetail({ order, onClose, onStatus, onPay }) {
             {order.discount_amount>0 && <InfoRow label="Discount"><span className="text-green">−{fmt.currency(order.discount_amount)}</span></InfoRow>}
             {order.coins_redeemed>0 && <InfoRow label="🪙 Coins"><span className="text-amber">−{fmt.currency(order.coins_redeemed)}</span></InfoRow>}
             <InfoRow label="Delivery">{fmt.currency(order.delivery_fee)}</InfoRow>
-            <InfoRow label="Tax (5%)">{fmt.currency(order.tax_amount)}</InfoRow>
+            
             <div style={{display:'flex',justifyContent:'space-between',padding:'0.875rem 0 0.25rem',fontWeight:700,fontSize:'1.0625rem',fontFamily:'var(--font-head)'}}>
               <span>Total Paid</span>
               <span className="text-accent">{fmt.currency(order.total_amount)}</span>
@@ -336,9 +353,13 @@ function OrderDetail({ order, onClose, onStatus, onPay }) {
             <div>
               {order.status_history.map((h,i) => (
                 <div key={i} style={{display:'flex',gap:'0.75rem',padding:'0.625rem 1.25rem',borderBottom:i<order.status_history.length-1?'1px solid var(--border)':'none',alignItems:'flex-start'}}>
-                  <div style={{width:8,height:8,borderRadius:'50%',background:'var(--accent)',marginTop:6,flexShrink:0}}/>
+                  <div style={{width:8,height:8,borderRadius:'50%',background:h.status.includes('payment')?'var(--green)':'var(--accent)',marginTop:6,flexShrink:0}}/>
                   <div style={{flex:1}}>
-                    <div className="font-semi text-sm">{statusLabel(h.status)}</div>
+                    <div className="font-semi text-sm">
+                      {h.status.includes('payment') 
+                        ? `Payment ${h.status.replace('payment_','')}` 
+                        : statusLabel(h.status)}
+                    </div>
                     {h.note && <div className="text-xs text-muted">{h.note}</div>}
                   </div>
                   <div className="text-xs text-muted">{fmt.datetime(h.created_at)}</div>
@@ -353,8 +374,11 @@ function OrderDetail({ order, onClose, onStatus, onPay }) {
         {(TRANSITIONS[order.status]||[]).length>0 && (
           <button className="btn btn-primary" onClick={()=>onStatus(order)}>↑ Update Status</button>
         )}
-        {order.payment_method==='cash_on_delivery' && order.payment_status!=='paid' && (
-          <button className="btn btn-success" onClick={()=>onPay(order)}>$ Mark Paid</button>
+        {/* Payment update button - Show for all orders where payment is pending */}
+        {order.payment_status !== 'paid' && order.payment_status !== 'refunded' && (
+          <button className="btn btn-success" onClick={()=>onPay(order)}>
+            {order.payment_method === 'cash_on_delivery' ? '$ Mark Paid' : '💰 Confirm Payment'}
+          </button>
         )}
       </div>
     </>
