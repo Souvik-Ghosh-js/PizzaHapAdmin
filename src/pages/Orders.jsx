@@ -152,7 +152,7 @@ export default function Orders() {
                       </td>
                       <td><Badge status={o.status} /></td>
                       <td><Badge status={o.payment_status} /></td>
-                      <td><span className="text-xs text-muted nowrap">{fmt.date(o.created_at)}</span></td>
+                      <td><span className="text-xs text-muted nowrap">{fmt.datetime(o.created_at)}</span></td>
                       <td onClick={e=>e.stopPropagation()}>
                         <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
                           {o.status === 'pending' ? (
@@ -300,7 +300,7 @@ function OrderDetail({ order, onClose, onStatus, onAccept, onReject, onPay, onRe
       <div className="drawer-header">
         <div style={{flex:1}}>
           <div className="font-bold text-accent" style={{fontFamily:'var(--font-head)',fontSize:'1rem'}}>{order.order_number}</div>
-          <div className="text-xs text-muted">{fmt.date(order.created_at)}</div>
+          <div className="text-xs text-muted">{fmt.datetime(order.created_at)}</div>
         </div>
         <div style={{display:'flex',gap:6,alignItems:'center'}}>
           <Badge status={order.status}/>
@@ -453,7 +453,7 @@ function OrderDetail({ order, onClose, onStatus, onAccept, onReject, onPay, onRe
                     </div>
                     {h.note && <div className="text-xs text-muted">{h.note}</div>}
                   </div>
-                  <div className="text-xs text-muted">{fmt.date(h.created_at)}</div>
+                  <div className="text-xs text-muted">{fmt.datetime(h.created_at)}</div>
                 </div>
               ))}
             </div>
