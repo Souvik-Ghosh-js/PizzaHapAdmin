@@ -50,6 +50,7 @@ export const getOrders = (params = {}) => {
 export const getOrderDetail      = (id)              => get(`/orders/${id}`);
 export const updateOrderStatus   = (id, status, note)=> put(`/orders/${id}/status`, { status, note });
 export const updatePaymentStatus = (id, ps, note)    => put(`/orders/${id}/payment-status`, { payment_status: ps, note });
+export const acceptRejectOrder   = (id, data)        => put(`/orders/${id}/accept-reject`, data);
 export const getInvoice          = (id)              => get(`/orders/${id}/invoice`);
 export const placeInhouseOrder   = (data)            => post('/orders/inhouse', data);
 
@@ -142,3 +143,9 @@ export const getSupportTickets = (params = {}) => {
 };
 export const replyToTicket = (id, message, status) =>
   post(`/support/tickets/${id}/reply`, { message, ...(status ? { status } : {}) });
+
+// ── Reviews ───────────────────────────────────────────────────────
+export const getReviews = (params = {}) => {
+  const q = new URLSearchParams(Object.entries(params).filter(([,v]) => v != null && v !== '')).toString();
+  return get(`/reviews${q ? '?' + q : ''}`);
+};

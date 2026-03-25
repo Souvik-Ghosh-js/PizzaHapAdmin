@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
-import { getOrders, getOrderDetail, updateOrderStatus, updatePaymentStatus, getRiders, assignRider } from '../services/api';
+import { getOrders, getOrderDetail, updateOrderStatus, updatePaymentStatus, getRiders, assignRider, acceptRejectOrder } from '../services/api';
 import { Badge, Pagination, Select, Spinner, EmptyState, Modal, Field, PageHeader, OrderProgress, InfoRow } from '../components/UI';
 import { fmt, statusLabel, debounce } from '../utils';
 import { useToast } from '../context';
@@ -32,6 +32,7 @@ export default function Orders() {
   const [actLoading, setAL]   = useState(false);
   const [statusModal, setSM]  = useState(null);
   const [payModal, setPM]     = useState(null);
+  const [rejectModal, setRM]  = useState(null);
   const [note, setNote]       = useState('');
   const [sel, setSel]         = useState('');
 
@@ -79,6 +80,20 @@ export default function Orders() {
       load(filters);
       if (drawer?.id === statusModal.id) refreshDrawer(statusModal.id);
     } catch(e) { toast(e.message,'error'); }
+    finally { setAL(false); }
+  };
+
+  const doAcceptReject = async (action, orderId, reason) => {
+    setAL(true);
+    try {
+      await acceptRejectOrder(orderId, { action, reason });
+      toast(`Order ${action}ed successfully`, 'success');
+      if (action === 'reject') {
+        setRM(null); setNote('');
+      }
+      load(filters);
+      if (drawer?.id === orderId) refreshDrawer(orderId);
+    } catch(e) { toast(e.message, 'error'); }
     finally { setAL(false); }
   };
 
@@ -137,11 +152,18 @@ export default function Orders() {
                       </td>
                       <td><Badge status={o.status} /></td>
                       <td><Badge status={o.payment_status} /></td>
-                      <td><span className="text-xs text-muted nowrap">{fmt.datetime(o.created_at)}</span></td>
+                      <td><span className="text-xs text-muted nowrap">{fmt.date(o.created_at)}</span></td>
                       <td onClick={e=>e.stopPropagation()}>
                         <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-                          {(TRANSITIONS[o.status]||[]).length > 0 && (
-                            <button className="btn btn-sm btn-ghost" onClick={()=>{setSM(o);setSel(TRANSITIONS[o.status][0]);setNote('');}}>↑ Status</button>
+                          {o.status === 'pending' ? (
+                            <>
+                              <button className="btn btn-sm btn-success" onClick={()=>doAcceptReject('accept', o.id)}>✓ Accept</button>
+                              <button className="btn btn-sm" style={{background:'var(--red)',color:'white',border:'none'}} onClick={()=>{setRM(o);setNote('');}}>✕ Reject</button>
+                            </>
+                          ) : (
+                            (TRANSITIONS[o.status]||[]).length > 0 && (
+                              <button className="btn btn-sm btn-ghost" onClick={()=>{setSM(o);setSel(TRANSITIONS[o.status][0]);setNote('');}}>↑ Status</button>
+                            )
                           )}
                           {/* Payment status update button - Show for all orders where payment is pending */}
                           {o.payment_status !== 'paid' && o.payment_status !== 'refunded' && (
@@ -213,6 +235,22 @@ export default function Orders() {
         </div>
       </Modal>
 
+      {/* Reject modal */}
+      <Modal open={!!rejectModal} onClose={()=>setRM(null)} title={`Reject Order — ${rejectModal?.order_number}`}
+        footer={<>
+          <button className="btn btn-ghost" onClick={()=>setRM(null)} disabled={actLoading}>Cancel</button>
+          <button className="btn" style={{background:'var(--red)',color:'white',border:'none'}} onClick={()=>doAcceptReject('reject', rejectModal.id, note)} disabled={actLoading||!note}>
+            {actLoading?<><Spinner className="spinner-sm"/>Rejecting…</>:'Confirm Rejection'}
+          </button>
+        </>}>
+        <div style={{display:'flex',flexDirection:'column',gap:'1rem'}}>
+          <div className="text-sm text-secondary">Please enter a reason for rejecting this order. Customers may be notified.</div>
+          <Field label="Rejection Reason" required>
+            <textarea className="input" value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g. Items out of stock, shop closed…" rows={3}/>
+          </Field>
+        </div>
+      </Modal>
+
       {/* Drawer */}
       {drawer && (
         <div className="drawer-backdrop" onClick={()=>setDrawer(null)}>
@@ -221,6 +259,8 @@ export default function Orders() {
               ? <div className="loading-center"><Spinner size="spinner-lg"/></div>
               : <OrderDetail order={drawer} onClose={()=>setDrawer(null)}
                   onStatus={o=>{setSM(o);setSel(TRANSITIONS[o.status]?.[0]||'');setNote('');}}
+                  onAccept={o=>doAcceptReject('accept', o.id)}
+                  onReject={o=>{setRM(o);setNote('');}}
                   onPay={o=>{setPM(o);setSel('paid');setNote('');}}
                   onRefresh={()=>refreshDrawer(drawer.id)} />
             }
@@ -233,7 +273,7 @@ export default function Orders() {
 
 const RIDER_STATUSES = new Set(['confirmed', 'preparing', 'out_for_delivery']);
 
-function OrderDetail({ order, onClose, onStatus, onPay, onRefresh }) {
+function OrderDetail({ order, onClose, onStatus, onAccept, onReject, onPay, onRefresh }) {
   const toast = useToast();
   const [riders, setRiders]         = useState([]);
   const [selectedRider, setSelectedRider] = useState(order.rider_id ?? '');
@@ -260,7 +300,7 @@ function OrderDetail({ order, onClose, onStatus, onPay, onRefresh }) {
       <div className="drawer-header">
         <div style={{flex:1}}>
           <div className="font-bold text-accent" style={{fontFamily:'var(--font-head)',fontSize:'1rem'}}>{order.order_number}</div>
-          <div className="text-xs text-muted">{fmt.datetime(order.created_at)}</div>
+          <div className="text-xs text-muted">{fmt.date(order.created_at)}</div>
         </div>
         <div style={{display:'flex',gap:6,alignItems:'center'}}>
           <Badge status={order.status}/>
@@ -413,7 +453,7 @@ function OrderDetail({ order, onClose, onStatus, onPay, onRefresh }) {
                     </div>
                     {h.note && <div className="text-xs text-muted">{h.note}</div>}
                   </div>
-                  <div className="text-xs text-muted">{fmt.datetime(h.created_at)}</div>
+                  <div className="text-xs text-muted">{fmt.date(h.created_at)}</div>
                 </div>
               ))}
             </div>
@@ -422,8 +462,15 @@ function OrderDetail({ order, onClose, onStatus, onPay, onRefresh }) {
       </div>
 
       <div className="drawer-footer">
-        {(TRANSITIONS[order.status]||[]).length>0 && (
-          <button className="btn btn-primary" onClick={()=>onStatus(order)}>↑ Update Status</button>
+        {order.status === 'pending' ? (
+          <>
+            <button className="btn btn-success" style={{flex:1}} onClick={()=>onAccept(order)}>✓ Accept</button>
+            <button className="btn" style={{flex:1,background:'var(--red)',color:'white',border:'none'}} onClick={()=>onReject(order)}>✕ Reject</button>
+          </>
+        ) : (
+          (TRANSITIONS[order.status]||[]).length>0 && (
+            <button className="btn btn-primary" onClick={()=>onStatus(order)}>↑ Update Status</button>
+          )
         )}
         {/* Payment update button - Show for all orders where payment is pending */}
         {order.payment_status !== 'paid' && order.payment_status !== 'refunded' && (

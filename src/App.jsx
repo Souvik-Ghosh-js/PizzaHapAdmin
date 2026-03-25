@@ -12,6 +12,8 @@ import InHouse   from './pages/InHouse';
 import { Users, Menu, Categories, Crusts, Toppings, Locations, Coupons } from './pages/Entities';
 import { Refunds, Support, Notifications } from './pages/Misc';
 import Riders from './pages/Riders';
+import Reviews from './pages/Reviews';
+import SalesReport from './pages/SalesReport';
 
 function Layout() {
   const [collapsed, setCollapsed]   = useState(false);
@@ -54,6 +56,8 @@ function Layout() {
             <Route path="/refunds"       element={<Refunds />} />
             <Route path="/support"       element={<Support />} />
             <Route path="/notifications" element={<Notifications />} />
+            <Route path="/sales-report"  element={<SalesReport />} />
+            <Route path="/reviews"       element={<Reviews />} />
             <Route path="*"              element={<Navigate to="/" replace />} />
           </Routes>
         </div>
