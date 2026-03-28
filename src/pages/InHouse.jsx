@@ -265,6 +265,9 @@ export default function InHouse() {
                       </span>
                       {hasToppings && <span style={{ fontSize: '0.55rem', background: 'var(--green-dim)', color: 'var(--green)', padding: '1px 4px', borderRadius: 3 }}>+toppings</span>}
                       {hasCrust    && <span style={{ fontSize: '0.55rem', background: 'var(--blue-dim)',  color: 'var(--blue)',  padding: '1px 4px', borderRadius: 3 }}>+crust</span>}
+                      <span style={{ fontSize: '0.55rem', background: p.stock_quantity > 0 ? 'var(--bg-muted)' : 'var(--red-dim)', color: p.stock_quantity > 0 ? 'var(--text-muted)' : 'var(--red)', padding: '1px 4px', borderRadius: 3 }}>
+                        📦 {p.stock_quantity || 0}
+                      </span>
                     </div>
                   </button>
                 );
@@ -446,8 +449,11 @@ export default function InHouse() {
                 </Field>
               ) : (
                 /* No sizes on record — show base price as fixed size */
-                <div style={{ background: 'var(--bg-muted)', borderRadius: 'var(--r-sm)', padding: '0.625rem 0.875rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                  Price: <strong>{fmt.currency(selectedProduct.base_price)}</strong>
+                <div style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--bg-muted)', borderRadius: 'var(--r-sm)', padding: '0.625rem 0.875rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                  <div>Price: <strong>{fmt.currency(selectedProduct.base_price)}</strong></div>
+                  <div style={{ color: selectedProduct.stock_quantity > 0 ? 'var(--text-muted)' : 'var(--red)' }}>
+                    In stock: <strong>{selectedProduct.stock_quantity || 0}</strong>
+                  </div>
                 </div>
               )}
 

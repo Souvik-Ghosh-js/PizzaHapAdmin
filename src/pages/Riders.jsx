@@ -34,6 +34,7 @@ export default function Riders() {
         await createRider({
           name: form.name.trim(),
           phone: form.phone.trim(),
+          email: form.email?.trim() || null,
           ...(form.location_id ? { location_id: parseInt(form.location_id) } : {}),
         });
         toast('Rider added', 'success');
@@ -41,6 +42,7 @@ export default function Riders() {
         await updateRider(form.id, {
           name: form.name.trim(),
           phone: form.phone.trim(),
+          email: form.email?.trim() || null,
           is_active: form.is_active,
           ...(form.location_id ? { location_id: parseInt(form.location_id) } : { location_id: null }),
         });
@@ -87,7 +89,7 @@ export default function Riders() {
           : <div className="table-wrap"><table>
               <thead><tr>
                 <th>Name</th>
-                <th>Phone</th>
+                <th>Contact</th>
                 <th>Branch</th>
                 <th>Status</th>
                 <th>Since</th>
@@ -98,8 +100,12 @@ export default function Riders() {
                   <tr key={r.id}>
                     <td>
                       <div className="font-semi" style={{ fontSize: '0.875rem' }}>{r.name}</div>
+                      <div className="text-xs text-muted">ID: #{r.id}</div>
                     </td>
-                    <td><span className="text-sm">{r.phone}</span></td>
+                    <td>
+                      <div className="text-sm">{r.phone}</div>
+                      <div className="text-xs text-secondary">{r.email || 'No email'}</div>
+                    </td>
                     <td><span className="text-sm text-secondary">{r.location_name || '—'}</span></td>
                     <td>
                       <Badge status={r.is_active ? 'active' : 'inactive'}>
@@ -145,6 +151,9 @@ export default function Riders() {
               <input className="input" type="tel" {...F('phone')} placeholder="9876543210" />
             </Field>
           </div>
+          <Field label="Email Address">
+            <input className="input" type="email" {...F('email')} placeholder="rider@pizzahap.com" />
+          </Field>
           <Field label="Assign Branch">
             <select className="input" value={form.location_id ?? ''} onChange={e => setForm(f => ({ ...f, location_id: e.target.value }))}>
               <option value="">Any / Unassigned</option>

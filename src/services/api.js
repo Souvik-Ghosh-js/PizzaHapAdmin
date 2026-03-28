@@ -65,6 +65,7 @@ export const blockUser = (id, is_blocked) => put(`/users/${id}/block`, { is_bloc
 export const getCategories    = ()          => get('/menu/categories');
 export const createCategory   = (data)      => post('/menu/categories', data);
 export const updateCategory   = (id, data)  => put(`/menu/categories/${id}`, data);
+export const deleteCategory   = (id)         => del(`/menu/categories/${id}`);
 export const uploadCategoryImage = (id, file) => {
   const fd = new FormData(); fd.append('image', file);
   return postForm(`/menu/categories/${id}/image`, fd);

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   getUsers, blockUser,
-  getCategories, createCategory, updateCategory, uploadCategoryImage,
+  getCategories, createCategory, updateCategory, deleteCategory, uploadCategoryImage,
   getProducts, createProduct, updateProduct, deleteProduct, uploadProductImage,
   getProductSizes, createProductSize, updateProductSize, deleteProductSize,
   getToppings, createTopping, updateTopping, deleteTopping,
@@ -182,10 +182,16 @@ export function Categories() {
                   </div>
                 </div>
               </div>
-              <button className="btn btn-sm btn-ghost" style={{ marginTop: '0.75rem', width: '100%' }}
-                onClick={() => { setForm({ ...cat, has_toppings: !!cat.has_toppings, has_crust: !!cat.has_crust, is_active: !!cat.is_active }); setImg(null); setModal('edit'); }}>
-                Edit
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                <button className="btn btn-sm btn-ghost" style={{ flex: 1 }}
+                  onClick={() => { setForm({ ...cat, has_toppings: !!cat.has_toppings, has_crust: !!cat.has_crust, is_active: !!cat.is_active }); setImg(null); setModal('edit'); }}>
+                  Edit
+                </button>
+                <button className="btn btn-sm btn-ghost btn-danger-text" style={{ padding: '0 0.5rem' }}
+                  onClick={() => remove(cat)}>
+                  🗑️
+                </button>
+              </div>
             </div>
           ))}
       </div>
@@ -272,6 +278,7 @@ export function Menu() {
           name: form.name, description: form.description || undefined,
           base_price: parseFloat(form.base_price), category_id: parseInt(form.category_id),
           is_veg: !!form.is_veg, is_featured: !!form.is_featured,
+          stock_quantity: parseInt(form.stock_quantity || 0),
           ...(sizes?.length ? { sizes } : {}),
         });
         if (imgFile && r.data?.product_id) await uploadProductImage(r.data.product_id, imgFile).catch(() => {});
@@ -281,6 +288,7 @@ export function Menu() {
           name: form.name, description: form.description || undefined,
           base_price: parseFloat(form.base_price), category_id: parseInt(form.category_id),
           is_veg: !!form.is_veg, is_featured: !!form.is_featured, is_available: !!form.is_available,
+          stock_quantity: parseInt(form.stock_quantity || 0),
         });
         if (imgFile) await uploadProductImage(form.id, imgFile).catch(() => {});
         toast('Product updated', 'success');
@@ -339,7 +347,7 @@ export function Menu() {
               <table>
                 <thead><tr>
                   <th>Product</th><th>Category</th><th>Price</th>
-                  <th>Type</th><th>Featured</th><th>Status</th><th>Actions</th>
+                  <th>Stock</th><th>Type</th><th>Featured</th><th>Status</th><th>Actions</th>
                 </tr></thead>
                 <tbody>
                   {products.map(p => (
@@ -357,6 +365,11 @@ export function Menu() {
                       </td>
                       <td><span className="text-sm text-secondary">{p.category_name || '—'}</span></td>
                       <td><span className="font-bold">{fmt.currency(p.base_price)}</span></td>
+                      <td>
+                        <Badge status={p.stock_quantity > 0 ? 'active' : 'inactive'}>
+                          {p.stock_quantity || 0}
+                        </Badge>
+                      </td>
                       <td><Badge status={p.is_veg ? 'veg' : 'nonveg'}>{p.is_veg ? 'Veg' : 'Non-Veg'}</Badge></td>
                       <td>{p.is_featured ? <span className="text-amber">⭐</span> : <span className="text-muted">—</span>}</td>
                       <td><Badge status={p.is_available ? 'active' : 'inactive'}>{p.is_available ? 'Active' : 'Hidden'}</Badge></td>
@@ -403,12 +416,15 @@ export function Menu() {
             <Field label="Base Price (₹)" required>
               <input className="input" type="number" step="0.01" {...F('base_price')} placeholder="299" />
             </Field>
-            <Field label="Product Image" hint="JPEG, PNG or WebP · max 5MB">
-              <input type="file" accept="image/jpeg,image/png,image/webp" className="input"
-                style={{ padding: '0.375rem 0.75rem', cursor: 'pointer' }}
-                onChange={e => setImgFile(e.target.files?.[0] || null)} />
+            <Field label="Stock Quantity" required hint="Current inventory count">
+              <input className="input" type="number" {...F('stock_quantity')} placeholder="100" />
             </Field>
           </div>
+          <Field label="Product Image" hint="JPEG, PNG or WebP · max 5MB">
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="input"
+              style={{ padding: '0.375rem 0.75rem', cursor: 'pointer' }}
+              onChange={e => setImgFile(e.target.files?.[0] || null)} />
+          </Field>
           {modal === 'create' && (
             <Field label="Sizes" hint="One per line: Name, Price — e.g. Regular, 199">
               <textarea className="input" {...F('sizes_raw')} rows={3}
