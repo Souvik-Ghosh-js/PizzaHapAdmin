@@ -24,26 +24,34 @@ function playBeep(frequency, startTime, duration, volume = 0.5) {
 }
 
 /**
- * Play a loud alert for new orders — 3 ascending beeps.
+ * Play a loud alert for new orders — 3 ascending beeps, repeated for 5 seconds.
  */
 export function playOrderAlert() {
   try {
     const ctx = getAudioCtx();
     const now = ctx.currentTime;
-    playBeep(800,  now,       0.15, 0.6);
-    playBeep(1000, now + 0.2, 0.15, 0.6);
-    playBeep(1200, now + 0.4, 0.25, 0.7);
+    // Repeat the 3-beep pattern every 1 second (5 times total)
+    for (let i = 0; i < 5; i++) {
+      const wait = i * 1.0;
+      playBeep(800,  now + wait,       0.15, 0.6);
+      playBeep(1000, now + wait + 0.2, 0.15, 0.6);
+      playBeep(1200, now + wait + 0.4, 0.25, 0.7);
+    }
   } catch (_) { /* audio not supported */ }
 }
 
 /**
- * Play a warning alert for cancelled orders — 2 low descending beeps.
+ * Play a warning alert for cancelled orders — 2 low descending beeps, repeated for 5 seconds.
  */
 export function playCancelAlert() {
   try {
     const ctx = getAudioCtx();
     const now = ctx.currentTime;
-    playBeep(600, now,       0.2, 0.6);
-    playBeep(400, now + 0.3, 0.3, 0.7);
+    // Repeat every 1 second (5 times total)
+    for (let i = 0; i < 5; i++) {
+      const wait = i * 1.0;
+      playBeep(600, now + wait,       0.2, 0.6);
+      playBeep(400, now + wait + 0.3, 0.3, 0.7);
+    }
   } catch (_) { /* audio not supported */ }
 }
