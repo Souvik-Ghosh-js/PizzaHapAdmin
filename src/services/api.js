@@ -7,6 +7,10 @@ export const setToken  = (t) => { _token = t; localStorage.setItem('admin_token'
 export const getToken  = () => _token || localStorage.getItem('admin_token');
 export const clearToken= () => { _token = null; localStorage.removeItem('admin_token'); localStorage.removeItem('admin_info'); };
 
+const getAdminInfo = () => {
+  try { return JSON.parse(localStorage.getItem('admin_info') || '{}'); } catch { return {}; }
+};
+
 const headers = (extra = {}) => ({
   'Content-Type': 'application/json',
   ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
@@ -39,12 +43,23 @@ export const login = (email, password, location_id) =>
 export const getLocationsAuthed = () => get('/locations');
 
 // ── Dashboard ─────────────────────────────────────────────────────
-export const getDashboard = () => get('/dashboard');
-export const getReports   = (period = 'daily') => get(`/dashboard/reports?period=${period}`);
+export const getDashboard = () => {
+  const admin = getAdminInfo();
+  const loc = admin.location_id;
+  return get(`/dashboard${loc ? '?location_id=' + loc : ''}`);
+};
+export const getReports   = (period = 'daily') => {
+  const admin = getAdminInfo();
+  const loc = admin.location_id;
+  return get(`/dashboard/reports?period=${period}${loc ? '&location_id=' + loc : ''}`);
+};
 
 // ── Orders ────────────────────────────────────────────────────────
 export const getOrders = (params = {}) => {
-  const q = new URLSearchParams(Object.entries(params).filter(([,v]) => v != null && v !== '')).toString();
+  const admin = getAdminInfo();
+  const merged = { ...params };
+  if (admin.location_id && merged.location_id === undefined) merged.location_id = admin.location_id;
+  const q = new URLSearchParams(Object.entries(merged).filter(([,v]) => v != null && v !== '')).toString();
   return get(`/orders${q ? '?' + q : ''}`);
 };
 export const getOrderDetail      = (id)              => get(`/orders/${id}`);
@@ -56,7 +71,10 @@ export const placeInhouseOrder   = (data)            => post('/orders/inhouse', 
 
 // ── Users ─────────────────────────────────────────────────────────
 export const getUsers  = (params = {}) => {
-  const q = new URLSearchParams(Object.entries(params).filter(([,v]) => v != null && v !== '')).toString();
+  const admin = getAdminInfo();
+  const merged = { ...params };
+  if (admin.location_id && merged.location_id === undefined) merged.location_id = admin.location_id;
+  const q = new URLSearchParams(Object.entries(merged).filter(([,v]) => v != null && v !== '')).toString();
   return get(`/users${q ? '?' + q : ''}`);
 };
 export const blockUser = (id, is_blocked) => put(`/users/${id}/block`, { is_blocked });
@@ -73,7 +91,10 @@ export const uploadCategoryImage = (id, file) => {
 
 // ── Products ──────────────────────────────────────────────────────
 export const getProducts = (params = {}) => {
-  const q = new URLSearchParams(Object.entries(params).filter(([,v]) => v != null && v !== '')).toString();
+  const admin = getAdminInfo();
+  const merged = { ...params };
+  if (admin.location_id && merged.location_id === undefined) merged.location_id = admin.location_id;
+  const q = new URLSearchParams(Object.entries(merged).filter(([,v]) => v != null && v !== '')).toString();
   return get(`/menu/products${q ? '?' + q : ''}`);
 };
 export const createProduct        = (data)       => post('/menu/products', data);
@@ -121,25 +142,40 @@ export const validateCoupon = (code, order_value) =>
   }).then(r => r.json()).then(j => { if (!j.success) throw new Error(j.message || 'Invalid coupon'); return j; });
 
 // ── Riders ────────────────────────────────────────────────────────
-export const getRiders    = ()          => get('/riders');
+export const getRiders    = ()          => {
+  const admin = getAdminInfo();
+  const loc = admin.location_id;
+  return get(`/riders${loc ? '?location_id=' + loc : ''}`);
+};
 export const createRider  = (data)      => post('/riders', data);
 export const updateRider  = (id, data)  => put(`/riders/${id}`, data);
 export const deleteRider  = (id)        => del(`/riders/${id}`);
 export const assignRider  = (orderId, rider_id) => put(`/orders/${orderId}/rider`, { rider_id });
 
 // ── Notifications ─────────────────────────────────────────────────
-export const getNotifications      = () => get('/notifications');
+export const getNotifications      = () => {
+  const admin = getAdminInfo();
+  const loc = admin.location_id;
+  return get(`/notifications${loc ? '?location_id=' + loc : ''}`);
+};
 export const markAllNotifsRead     = () => put('/notifications/read-all', {});
 export const markOneNotifRead      = (id) => put(`/notifications/${id}/read`, {});
 export const broadcastNotification = (data) => post('/notifications/broadcast', data);
 
 // ── Refunds ───────────────────────────────────────────────────────
-export const getRefunds    = (status) => get(`/refunds${status ? '?status=' + status : ''}`);
+export const getRefunds    = (status) => {
+  const admin = getAdminInfo();
+  const loc = admin.location_id;
+  return get(`/refunds?${status ? 'status=' + status + '&' : ''}${loc ? 'location_id=' + loc : ''}`);
+};
 export const processRefund = (id, action, notes) => post(`/refunds/${id}/process`, { action, notes });
 
 // ── Support ───────────────────────────────────────────────────────
 export const getSupportTickets = (params = {}) => {
-  const q = new URLSearchParams(Object.entries(params).filter(([,v]) => v != null && v !== '')).toString();
+  const admin = getAdminInfo();
+  const merged = { ...params };
+  if (admin.location_id && merged.location_id === undefined) merged.location_id = admin.location_id;
+  const q = new URLSearchParams(Object.entries(merged).filter(([,v]) => v != null && v !== '')).toString();
   return get(`/support/tickets${q ? '?' + q : ''}`);
 };
 export const replyToTicket = (id, message, status) =>
@@ -147,6 +183,9 @@ export const replyToTicket = (id, message, status) =>
 
 // ── Reviews ───────────────────────────────────────────────────────
 export const getReviews = (params = {}) => {
-  const q = new URLSearchParams(Object.entries(params).filter(([,v]) => v != null && v !== '')).toString();
+  const admin = getAdminInfo();
+  const merged = { ...params };
+  if (admin.location_id && merged.location_id === undefined) merged.location_id = admin.location_id;
+  const q = new URLSearchParams(Object.entries(merged).filter(([,v]) => v != null && v !== '')).toString();
   return get(`/reviews${q ? '?' + q : ''}`);
 };
