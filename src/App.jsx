@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { AuthProvider, ToastProvider, useAuth } from './context';
+import { io } from 'socket.io-client';
+import { AuthProvider, ToastProvider, useAuth, useToast } from './context';
 import { getNotifications } from './services/api';
+import { playOrderAlert, playCancelAlert } from './utils/notificationSound';
 
 import Sidebar   from './components/Sidebar';
 import Header    from './components/Header';
@@ -20,6 +22,9 @@ function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unread, setUnread]         = useState(0);
   const navigate = useNavigate();
+  const { admin } = useAuth();
+  const toast = useToast();
+  const socketRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +37,57 @@ function Layout() {
     const t = setInterval(fetchUnread, 30000);
     return () => { cancelled = true; clearInterval(t); };
   }, []);
+
+  // Request browser notification permission on first load
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Real-time notifications via Socket.IO
+  useEffect(() => {
+    const socket = io('https://api.gobt.in', { transports: ['websocket', 'polling'] });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      socket.emit('join_admin', admin?.location_id || null);
+    });
+
+    socket.on('admin_notification', (payload) => {
+      // Refresh unread count
+      getNotifications()
+        .then(r => setUnread(r.data?.unread_count || 0))
+        .catch(() => {});
+
+      const title = payload.title || '';
+      const isCancel = title.toLowerCase().includes('cancel');
+      const isNewOrder = title.toLowerCase().includes('new order');
+
+      if (isNewOrder) {
+        playOrderAlert();
+        toast(`🔔 ${title}: ${payload.message}`, 'success', 8000);
+      } else if (isCancel) {
+        playCancelAlert();
+        toast(`⚠️ ${title}: ${payload.message}`, 'warning', 8000);
+      } else {
+        playOrderAlert();
+        toast(`🔔 ${title}: ${payload.message}`, 'info', 6000);
+      }
+
+      // Desktop notification — shows even when tab is minimized/background
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const n = new Notification(title, {
+          body: payload.message,
+          icon: '/favicon.ico',
+          requireInteraction: true,  // stays until dismissed
+        });
+        n.onclick = () => { window.focus(); n.close(); };
+      }
+    });
+
+    return () => { socket.disconnect(); };
+  }, [admin?.location_id]);
 
   return (
     <div className="app-layout">
