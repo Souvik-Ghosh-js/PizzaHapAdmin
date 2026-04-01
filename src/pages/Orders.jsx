@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { getOrders, getOrderDetail, updateOrderStatus, updatePaymentStatus, getRiders, assignRider, acceptRejectOrder } from '../services/api';
 import { Badge, Pagination, Select, Spinner, EmptyState, Modal, Field, PageHeader, OrderProgress, InfoRow } from '../components/UI';
 import { fmt, statusLabel, debounce } from '../utils';
-import { useToast } from '../context';
+import { useToast, useAuth } from '../context';
 
 const STATUS_OPTS = [
   {value:'pending',label:'Pending'},{value:'confirmed',label:'Confirmed'},
@@ -23,6 +23,7 @@ const TRANSITIONS = {
 
 export default function Orders() {
   const toast = useToast();
+  const { admin } = useAuth();
   const location = useLocation();
   const [orders, setOrders]   = useState([]);
   const [pag, setPag]         = useState(null);
@@ -112,7 +113,7 @@ export default function Orders() {
 
   return (
     <div className="page-enter">
-      <PageHeader title="Orders" subtitle="Manage all customer orders"
+      <PageHeader title="Orders" subtitle={`Manage customer orders · ${admin?.location_name || 'All Branches'}`}
         actions={
           <div style={{ display:'flex', gap:'0.625rem', flexWrap:'wrap' }}>
             <Select value={filters.status} onChange={v=>setF('status',v)} options={STATUS_OPTS} placeholder="All Statuses" style={{minWidth:150}} />

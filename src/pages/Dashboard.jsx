@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getDashboard, getReports } from '../services/api';
-import { Spinner, KpiCard, SectionCard, Tabs } from '../components/UI';
+import { Spinner, KpiCard, SectionCard, Tabs, PageHeader } from '../components/UI';
+import { useAuth } from '../context';
 import { fmt } from '../utils';
 import {
   AreaChart, Area, BarChart, Bar,
@@ -26,6 +27,7 @@ export default function Dashboard() {
   const [reports, setReports] = useState([]);
   const [period, setPeriod] = useState('daily');
   const [loading, setLoading] = useState(true);
+  const { admin } = useAuth();
 
   useEffect(() => {
     setLoading(true);
@@ -51,6 +53,10 @@ export default function Dashboard() {
 
   return (
     <div className="page-enter" style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+      <PageHeader 
+        title="Admin Dashboard" 
+        subtitle={`Real-time overview · ${admin?.location_name || 'All Branches'}`} 
+      />
 
       {/* KPIs */}
       <div className="stats-grid">
