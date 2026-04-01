@@ -148,7 +148,22 @@ export default function InHouse() {
   };
 
   const subtotal = parseFloat(cart.reduce((s, i) => s + itemTotal(i), 0).toFixed(2));
-  const discount = appliedCoupon?.is_bogo ? 0 : (appliedCoupon?.calculated_discount || 0);
+  const bogoDiscount = (() => {
+    if (!appliedCoupon?.is_bogo) return 0;
+    const ids = appliedCoupon.applicable_product_ids || [];
+    const eligible = ids.length > 0
+      ? cart.filter(i => ids.includes(i.product.id))
+      : cart;
+    if (!eligible.length) return 0;
+    const unitPrice = (i) => {
+      const sp = parseFloat(i.size.price) || 0;
+      const cp = parseFloat(i.crust_price) || 0;
+      const tp = (i.toppings || []).reduce((s, t) => s + (parseFloat(t.price) || 0), 0);
+      return sp + cp + tp;
+    };
+    return Math.min(...eligible.map(unitPrice));
+  })();
+  const discount = appliedCoupon?.is_bogo ? bogoDiscount : (appliedCoupon?.calculated_discount || 0);
   const total    = parseFloat(Math.max(0, subtotal - discount).toFixed(2));
 
   const applyCoupon = async () => {
@@ -323,7 +338,7 @@ export default function InHouse() {
                   {appliedCoupon && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: 4, color: 'var(--green)' }}>
                       <span>🎫 {appliedCoupon.code}</span>
-                      <span>{appliedCoupon.is_bogo ? 'BOGO applied' : `−${fmt.currency(discount)}`}</span>
+                      <span>{appliedCoupon.is_bogo ? `BOGO −${fmt.currency(discount)}` : `−${fmt.currency(discount)}`}</span>
                     </div>
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.0625rem', fontFamily: 'var(--font-head)', paddingTop: '0.625rem', borderTop: '1px solid var(--border)' }}>
@@ -381,7 +396,7 @@ export default function InHouse() {
             </div>
             <button className="btn btn-primary btn-lg w-full" style={{ justifyContent: 'center' }}
               onClick={place} disabled={placing || cart.length === 0 || !admin?.location_id}>
-              {placing ? <><Spinner className="spinner-sm" />Placing…</> : appliedCoupon?.is_bogo ? `Place Order · ${fmt.currency(total)} + BOGO` : `Place Order · ${fmt.currency(total)}`}
+              {placing ? <><Spinner className="spinner-sm" />Placing…</> : `Place Order · ${fmt.currency(total)}`}
             </button>
           </div>
 
