@@ -176,6 +176,35 @@ export default function Orders() {
         }
       </div>
 
+      <Modal open={!!drawer} onClose={()=>setDrawer(null)} title={`Order: ${drawer?.order_number || ''}`} size="lg"
+        footer={<div style={{ width: '100%', display: 'flex', gap: '0.75rem' }}>
+          {drawer && (
+            <>
+              {drawer.status === 'pending' ? (
+                <>
+                  <button className="btn btn-success" style={{ flex: 1.5, height: 44 }} onClick={() => doAcceptReject('accept', drawer.id)}>✓ Accept Order</button>
+                  <button className="btn btn-danger" style={{ flex: 1, height: 44 }} onClick={() => { setRM(drawer); setNote(''); }}>✕ Reject</button>
+                </>
+              ) : (
+                (TRANSITIONS[drawer.status] || []).length > 0 && (
+                  <button className="btn btn-primary" style={{ flex: 1, height: 44 }} onClick={() => { setSM(drawer); setSel(TRANSITIONS[drawer.status]?.[0] || ''); setNote(''); }}>🚀 Update Status</button>
+                )
+              )}
+              {drawer.payment_status !== 'paid' && drawer.payment_status !== 'refunded' && (
+                <button className="btn btn-success" style={{ height: 44, padding: '0 1.25rem' }} onClick={() => { setPM(drawer); setSel('paid'); setNote(''); }}>
+                  {drawer.payment_method === 'cash_on_delivery' ? '💵 Mark Paid' : '💰 Confirm Payment'}
+                </button>
+              )}
+            </>
+          )}
+        </div>}>
+        {drawer && (
+          drawer._loading
+            ? <div className="loading-center" style={{ minHeight: 200 }}><Spinner size="spinner-lg" /></div>
+            : <OrderDetail order={drawer} onRefresh={() => refreshDrawer(drawer.id)} />
+        )}
+      </Modal>
+
       <Modal open={!!statusModal} onClose={()=>setSM(null)} title={`Update Status — ${statusModal?.order_number}`}
         footer={
           <>
@@ -220,35 +249,6 @@ export default function Orders() {
         <Field label="Rejection Reason" required>
           <textarea className="input" value={note} onChange={e=>setNote(e.target.value)} rows={3}/>
         </Field>
-      </Modal>
-
-      <Modal open={!!drawer} onClose={()=>setDrawer(null)} title={`Order: ${drawer?.order_number || ''}`} size="lg"
-        footer={<div style={{ width: '100%', display: 'flex', gap: '0.75rem' }}>
-          {drawer && (
-            <>
-              {drawer.status === 'pending' ? (
-                <>
-                  <button className="btn btn-success" style={{ flex: 1.5, height: 44 }} onClick={() => doAcceptReject('accept', drawer.id)}>✓ Accept Order</button>
-                  <button className="btn btn-danger" style={{ flex: 1, height: 44 }} onClick={() => { setRM(drawer); setNote(''); }}>✕ Reject</button>
-                </>
-              ) : (
-                (TRANSITIONS[drawer.status] || []).length > 0 && (
-                  <button className="btn btn-primary" style={{ flex: 1, height: 44 }} onClick={() => { setSM(drawer); setSel(TRANSITIONS[drawer.status]?.[0] || ''); setNote(''); }}>🚀 Update Status</button>
-                )
-              )}
-              {drawer.payment_status !== 'paid' && drawer.payment_status !== 'refunded' && (
-                <button className="btn btn-success" style={{ height: 44, padding: '0 1.25rem' }} onClick={() => { setPM(drawer); setSel('paid'); setNote(''); }}>
-                  {drawer.payment_method === 'cash_on_delivery' ? '💵 Mark Paid' : '💰 Confirm Payment'}
-                </button>
-              )}
-            </>
-          )}
-        </div>}>
-        {drawer && (
-          drawer._loading
-            ? <div className="loading-center" style={{ minHeight: 200 }}><Spinner size="spinner-lg" /></div>
-            : <OrderDetail order={drawer} onRefresh={() => refreshDrawer(drawer.id)} />
-        )}
       </Modal>
     </div>
   );
