@@ -279,6 +279,9 @@ function OrderDetail({ order, onClose, onStatus, onAccept, onReject, onPay, onRe
   const [riders, setRiders]         = useState([]);
   const [selectedRider, setSelectedRider] = useState(order.rider_id ?? '');
   const [assigning, setAssigning]   = useState(false);
+  const [expanded, setExpanded]     = useState({ customer:true, items:true, bill:true, rider:true, history:false });
+
+  const toggle = (k) => setExpanded(prev => ({ ...prev, [k]: !prev[k] }));
 
   useEffect(() => {
     if (RIDER_STATUSES.has(order.status)) {
@@ -305,121 +308,110 @@ function OrderDetail({ order, onClose, onStatus, onAccept, onReject, onPay, onRe
         </div>
         <div style={{display:'flex',gap:6,alignItems:'center'}}>
           <Badge status={order.status}/>
-          <Badge status={order.payment_status}/>
           <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose}>✕</button>
         </div>
       </div>
 
-      <div className="drawer-body" style={{display:'flex',flexDirection:'column',gap:'1.125rem'}}>
-        {/* Progress */}
-        <div className="card card-pad">
+      <div className="drawer-body" style={{display:'flex',flexDirection:'column',gap:'1rem', scrollBehavior:'smooth'}}>
+        {/* Progress Card */}
+        <div className="card card-pad" style={{background:'white', boxShadow:'var(--shadow-sm)'}}>
           <OrderProgress status={order.status}/>
         </div>
 
-        {/* Payment info */}
-        <div style={{display:'flex',gap:'0.625rem'}}>
-          <div style={{flex:1,background:'var(--bg-elevated)',border:'1px solid var(--border)',borderRadius:'var(--r-md)',padding:'0.75rem',textAlign:'center'}}>
-            <div className="text-xs text-muted mb-1">Payment Method</div>
-            <div className="font-semi" style={{fontSize:'0.8rem',textTransform:'capitalize'}}>{(order.payment_method||'').replace(/_/g,' ')}</div>
+        {/* Quick Stats Row */}
+        <div style={{display:'flex',gap:'0.75rem'}}>
+          <div style={{flex:1,background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:'var(--r-md)',padding:'0.875rem',textAlign:'center',boxShadow:'var(--shadow-xs)'}}>
+            <div className="text-xs text-muted mb-1 font-bold uppercase letter-spacing-05">Method</div>
+            <div className="font-bold text-sm" style={{textTransform:'capitalize'}}>{(order.payment_method||'').replace(/_/g,' ')}</div>
           </div>
-          <div style={{flex:1,background:order.payment_status==='paid'?'var(--green-dim)':order.payment_status==='failed'?'var(--red-dim)':'var(--amber-dim)',border:`1px solid ${order.payment_status==='paid'?'var(--green-border)':order.payment_status==='failed'?'var(--red-border)':'var(--amber-border)'}`,borderRadius:'var(--r-md)',padding:'0.75rem',textAlign:'center'}}>
-            <div className="text-xs text-muted mb-1">Payment Status</div>
-            <div className="font-bold" style={{
-              fontSize:'0.875rem',
-              color:order.payment_status==='paid'?'var(--green)':order.payment_status==='failed'?'var(--red)':'var(--amber)'
-            }}>{statusLabel(order.payment_status)}</div>
+          <div style={{flex:1,background:order.payment_status==='paid'?'var(--green-dim)':'var(--amber-dim)',border:`1px solid ${order.payment_status==='paid'?'var(--green-border)':'var(--amber-border)'}`,borderRadius:'var(--r-md)',padding:'0.875rem',textAlign:'center',boxShadow:'var(--shadow-xs)'}}>
+            <div className="text-xs text-muted mb-1 font-bold uppercase letter-spacing-05">Payment</div>
+            <div className={`font-bold text-sm ${order.payment_status==='paid'?'text-success':'text-amber'}`}>{statusLabel(order.payment_status)}</div>
           </div>
-          <div style={{flex:1,background:'var(--accent-dim)',border:'1px solid var(--border-accent)',borderRadius:'var(--r-md)',padding:'0.75rem',textAlign:'center'}}>
-            <div className="text-xs text-muted mb-1">Total</div>
-            <div className="font-bold text-accent" style={{fontFamily:'var(--font-head)',fontSize:'0.95rem'}}>{fmt.currency(order.total_amount)}</div>
+          <div style={{flex:1,background:'var(--accent-dim)',border:'1px solid var(--border-accent)',borderRadius:'var(--r-md)',padding:'0.875rem',textAlign:'center',boxShadow:'var(--shadow-xs)'}}>
+            <div className="text-xs text-muted mb-1 font-bold uppercase letter-spacing-05">Total</div>
+            <div className="font-bold text-accent text-sm" style={{fontFamily:'var(--font-head)'}}>{fmt.currency(order.total_amount)}</div>
           </div>
         </div>
 
-        {/* Customer */}
-        <div className="card">
-          <div className="card-header"><h4>Customer</h4></div>
-          <div style={{padding:'0 1.25rem 0.5rem'}}>
-            <InfoRow label="Name">{order.user_name||'Walk-in'}</InfoRow>
-            <InfoRow label="Mobile">{order.user_mobile||'—'}</InfoRow>
-            <InfoRow label="Email">{order.user_email||'—'}</InfoRow>
-            <InfoRow label="Branch">{order.location_name||'—'}</InfoRow>
-            <InfoRow label="Type">{order.delivery_type==='delivery'?'🛵 Delivery':'🏪 Pickup'}</InfoRow>
-            {order.delivery_address && <InfoRow label="Address">{order.delivery_address}</InfoRow>}
-          </div>
-        </div>
+        {/* Collapsible Sections */}
+        <CollapsibleSection title="Customer Details" icon="👤" isOpen={expanded.customer} onToggle={()=>toggle('customer')}>
+           <div style={{padding:'0.25rem 0.5rem'}}>
+              <InfoRow label="Name">{order.user_name||'Walk-in'}</InfoRow>
+              <InfoRow label="Mobile">{order.user_mobile||'—'}</InfoRow>
+              <InfoRow label="Email">{order.user_email||'—'}</InfoRow>
+              <InfoRow label="Branch">{order.location_name||'—'}</InfoRow>
+              <InfoRow label="Type">{order.delivery_type==='delivery'?'🛵 Delivery':'🏪 Pickup'}</InfoRow>
+              {order.delivery_address && <InfoRow label="Address">{order.delivery_address}</InfoRow>}
+           </div>
+        </CollapsibleSection>
 
-        {/* Items */}
-        <div className="card">
-          <div className="card-header"><h4>Items ({order.items?.length||0})</h4></div>
+        <CollapsibleSection title={`Items (${order.items?.length||0})`} icon="🍕" isOpen={expanded.items} onToggle={()=>toggle('items')}>
           {(order.items||[]).map((item,i) => (
-            <div key={i} style={{display:'flex',gap:'0.75rem',padding:'1rem 1.25rem',borderBottom:i<order.items.length-1?`1px solid var(--border)`:'none'}}>
-              <div style={{width:48,height:48,borderRadius:10,overflow:'hidden',background:'var(--bg-muted)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.5rem',border:'1px solid var(--border)'}}>
-                {item.image_url?<img src={`${item.image_url}`} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 0v20M2 12h20"/></svg>}
+            <div key={i} style={{display:'flex',gap:'0.875rem',padding:'1rem 0.5rem',borderBottom:i<order.items.length-1?`1px solid var(--border)`:'none'}}>
+              <div style={{width:52,height:52,borderRadius:12,overflow:'hidden',background:'var(--bg-muted)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.5rem',border:'1px solid var(--border)'}}>
+                {item.image_url?<img src={`${item.image_url}`} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span>📦</span>}
               </div>
               <div style={{flex:1,minWidth:0}}>
-                <div className="font-semi" style={{fontSize:'0.9375rem',color:'var(--text-primary)',marginBottom:3}}>{item.product_name}</div>
-                <div className="text-xs" style={{color:'var(--text-secondary)',marginBottom:2}}>
+                <div className="font-bold" style={{fontSize:'0.9rem',color:'var(--text-primary)',marginBottom:2}}>{item.product_name}</div>
+                <div className="text-xs font-medium" style={{color:'var(--text-secondary)'}}>
                   {item.size_name}{item.crust_name?` · ${item.crust_name}`:''} × {item.quantity}
                 </div>
                 {item.toppings?.length>0 && (
-                  <div className="text-xs" style={{color:'var(--orange)',marginTop:4,fontWeight:600}}>
+                  <div className="text-xs" style={{color:'var(--orange)',marginTop:5,fontWeight:700}}>
                     + {item.toppings.map(t=>t.topping_name||t.name).join(', ')}
                   </div>
                 )}
                 {item.special_instructions && (
-                  <div className="text-xs" style={{color:'var(--text-muted)',marginTop:4,fontStyle:'italic'}}>
-                    Note: {item.special_instructions}
+                  <div className="text-xs" style={{color:'var(--text-muted)',marginTop:5,fontStyle:'italic',background:'rgba(0,0,0,0.03)',padding:'4px 8px',borderRadius:6}}>
+                    "{item.special_instructions}"
                   </div>
                 )}
               </div>
-              <div className="font-bold nowrap" style={{fontSize:'0.9375rem',color:'var(--text-primary)'}}>{fmt.currency(item.total_price)}</div>
+              <div className="font-bold nowrap" style={{fontSize:'0.95rem',color:'var(--accent)'}}>{fmt.currency(item.total_price)}</div>
             </div>
           ))}
-        </div>
+        </CollapsibleSection>
 
-        {/* Bill */}
-        <div className="card">
-          <div className="card-header"><h4>Bill Summary</h4></div>
-          <div style={{padding:'0.25rem 1.25rem 0.75rem'}}>
-            <InfoRow label="Subtotal">{fmt.currency(order.subtotal)}</InfoRow>
-            {order.discount_amount>0 && <InfoRow label="Discount"><span className="text-green">−{fmt.currency(order.discount_amount)}</span></InfoRow>}
-            {order.coins_redeemed>0 && <InfoRow label="🪙 Coins"><span className="text-amber">−{fmt.currency(order.coins_redeemed)}</span></InfoRow>}
-            <InfoRow label="Delivery">{fmt.currency(order.delivery_fee)}</InfoRow>
-            
-            <div style={{display:'flex',justifyContent:'space-between',padding:'0.875rem 0 0.25rem',fontWeight:700,fontSize:'1.0625rem',fontFamily:'var(--font-head)'}}>
-              <span>Total Paid</span>
-              <span className="text-accent">{fmt.currency(order.total_amount)}</span>
-            </div>
-          </div>
-        </div>
+        <CollapsibleSection title="Bill Summary" icon="🧾" isOpen={expanded.bill} onToggle={()=>toggle('bill')}>
+           <div style={{padding:'0.25rem 0.5rem 0.5rem'}}>
+              <InfoRow label="Subtotal">{fmt.currency(order.subtotal)}</InfoRow>
+              {order.discount_amount>0 && <InfoRow label="Discount"><span className="text-green font-bold">−{fmt.currency(order.discount_amount)}</span></InfoRow>}
+              {order.coins_redeemed>0 && <InfoRow label="🪙 Coins Used"><span className="text-amber font-bold">−{fmt.currency(order.coins_redeemed)}</span></InfoRow>}
+              <InfoRow label="Delivery Fee">{fmt.currency(order.delivery_fee)}</InfoRow>
+              
+              <div style={{display:'flex',justifyContent:'space-between',padding:'1rem 0.75rem',marginTop:'0.75rem',background:'var(--accent-dim)',borderRadius:10,fontWeight:800,fontSize:'1.1rem',fontFamily:'var(--font-head)',border:'1px dashed var(--accent-light)'}}>
+                <span style={{color:'var(--text-secondary)',fontSize:'0.9rem'}}>Total Amount</span>
+                <span className="text-accent">{fmt.currency(order.total_amount)}</span>
+              </div>
+           </div>
+        </CollapsibleSection>
 
-        {/* Feedback */}
+        {/* Feedback Section */}
         {order.feedback && (
-          <div className="card">
-            <div className="card-header"><h4>Customer Feedback</h4></div>
-            <div style={{padding:'1rem 1.25rem'}}>
-              <div style={{display:'flex',gap:'1.5rem',marginBottom:'0.75rem',flexWrap:'wrap'}}>
+          <CollapsibleSection title="Customer Feedback" icon="⭐" isOpen={true} onToggle={()=>{}}>
+            <div style={{padding:'0.5rem'}}>
+              <div style={{display:'flex',gap:'1.5rem',marginBottom:'1rem',flexWrap:'wrap'}}>
                 {[['Food',order.feedback.food_rating],order.feedback.delivery_rating&&['Delivery',order.feedback.delivery_rating],['Overall',order.feedback.overall_rating]].filter(Boolean).map(([lbl,n])=>(
                   <div key={lbl}>
-                    <div className="text-xs text-muted mb-1">{lbl}</div>
-                    <div style={{display:'flex',gap:2}}>{[1,2,3,4,5].map(i=><span key={i} style={{color:i<=n?'var(--amber)':'var(--bg-overlay)',fontSize:'1rem'}}>★</span>)}</div>
+                    <div className="text-xs text-muted mb-1 font-bold">{lbl}</div>
+                    <div style={{display:'flex',gap:2}}>{[1,2,3,4,5].map(i=><span key={i} style={{color:i<=n?'var(--amber)':'var(--bg-muted)',fontSize:'1.1rem'}}>★</span>)}</div>
                   </div>
                 ))}
               </div>
-              {order.feedback.comment && <p className="text-sm" style={{color:'var(--text-secondary)',fontStyle:'italic',lineHeight:1.5}}>"{order.feedback.comment}"</p>}
+              {order.feedback.comment && <p className="text-sm" style={{color:'var(--text-secondary)',fontStyle:'italic',lineHeight:1.6,background:'var(--bg-muted)',padding:'0.875rem',borderRadius:8}}>"{order.feedback.comment}"</p>}
             </div>
-          </div>
+          </CollapsibleSection>
         )}
 
-        {/* Rider assignment */}
+        {/* Rider assign section */}
         {RIDER_STATUSES.has(order.status) && (
-          <div className="card">
-            <div className="card-header"><h4>Delivery Rider</h4></div>
-            <div style={{padding:'0.75rem 1.25rem',display:'flex',flexDirection:'column',gap:'0.625rem'}}>
+          <CollapsibleSection title="Assign Delivery Rider" icon="🛵" isOpen={expanded.rider} onToggle={()=>toggle('rider')}>
+            <div style={{padding:'0.5rem',display:'flex',flexDirection:'column',gap:'0.875rem'}}>
               {order.rider_name && (
-                <div className="text-sm" style={{color:'var(--text-secondary)'}}>
-                  Currently assigned: <strong style={{color:'var(--text-primary)'}}>{order.rider_name}</strong>
-                  {order.rider_phone && <span className="text-muted"> · {order.rider_phone}</span>}
+                <div className="text-sm" style={{padding:'0.75rem',background:'var(--blue-dim)',borderRadius:8, border:'1px solid var(--blue-border)'}}>
+                  Currently: <strong style={{color:'var(--blue)'}}>{order.rider_name}</strong>
+                  {order.rider_phone && <span style={{marginLeft:8, opacity:0.7}}>({order.rider_phone})</span>}
                 </div>
               )}
               <div style={{display:'flex',gap:'0.5rem',alignItems:'center'}}>
@@ -435,51 +427,66 @@ function OrderDetail({ order, onClose, onStatus, onAccept, onReject, onPay, onRe
                 </button>
               </div>
             </div>
-          </div>
+          </CollapsibleSection>
         )}
 
-        {/* Status history */}
+        {/* Status history Section */}
         {order.status_history?.length > 0 && (
-          <div className="card">
-            <div className="card-header"><h4>Status History</h4></div>
-            <div>
+          <CollapsibleSection title="Status History" icon="🕒" isOpen={expanded.history} onToggle={()=>toggle('history')}>
+            <div style={{padding:'0.25rem 0'}}>
               {order.status_history.map((h,i) => (
-                <div key={i} style={{display:'flex',gap:'0.75rem',padding:'0.625rem 1.25rem',borderBottom:i<order.status_history.length-1?'1px solid var(--border)':'none',alignItems:'flex-start'}}>
-                  <div style={{width:8,height:8,borderRadius:'50%',background:h.status.includes('payment')?'var(--green)':'var(--accent)',marginTop:6,flexShrink:0}}/>
+                <div key={i} style={{display:'flex',gap:'1rem',padding:'0.75rem 0.5rem',borderBottom:i<order.status_history.length-1?'1px solid var(--border)':'none',alignItems:'flex-start'}}>
+                  <div style={{width:10,height:10,borderRadius:'50%',background:h.status.includes('payment')?'var(--green)':'var(--accent)',marginTop:5,flexShrink:0,boxShadow:'0 0 0 3px rgba(0,0,0,0.03)'}}/>
                   <div style={{flex:1}}>
-                    <div className="font-semi text-sm">
+                    <div className="font-bold text-sm" style={{color:'var(--text-primary)'}}>
                       {h.status.includes('payment') 
                         ? `Payment ${h.status.replace('payment_','')}` 
                         : statusLabel(h.status)}
                     </div>
-                    {h.note && <div className="text-xs text-muted">{h.note}</div>}
+                    {h.note && <div className="text-xs text-muted" style={{marginTop:2}}>{h.note}</div>}
+                    <div className="text-2xs text-muted uppercase mt-1 letter-spacing-05" style={{fontSize:10, opacity:0.6}}>{fmt.datetime(h.created_at)}</div>
                   </div>
-                  <div className="text-xs text-muted">{fmt.datetime(h.created_at)}</div>
                 </div>
               ))}
             </div>
-          </div>
+          </CollapsibleSection>
         )}
       </div>
 
-      <div className="drawer-footer">
-        {order.status === 'pending' ? (
-          <>
-            <button className="btn btn-success" style={{flex:1}} onClick={()=>onAccept(order)}>✓ Accept</button>
-            <button className="btn" style={{flex:1,background:'var(--red)',color:'white',border:'none'}} onClick={()=>onReject(order)}>✕ Reject</button>
-          </>
-        ) : (
-          (TRANSITIONS[order.status]||[]).length>0 && (
-            <button className="btn btn-primary" onClick={()=>onStatus(order)}>↑ Update Status</button>
-          )
-        )}
-        {/* Payment update button - Show for all orders where payment is pending */}
-        {order.payment_status !== 'paid' && order.payment_status !== 'refunded' && (
-          <button className="btn btn-success" onClick={()=>onPay(order)}>
-            {order.payment_method === 'cash_on_delivery' ? '$ Mark Paid' : '💰 Confirm Payment'}
-          </button>
-        )}
+      <div className="drawer-footer" style={{padding:'1.25rem 1.5rem', background:'white', boxShadow:'0 -4px 12px rgba(0,0,0,0.03)'}}>
+        <div style={{width:'100%', display:'flex', gap:'0.75rem'}}>
+          {order.status === 'pending' ? (
+            <>
+              <button className="btn btn-success" style={{flex:1.5, height:44, fontSize:'0.9rem'}} onClick={()=>onAccept(order)}>✓ Accept Order</button>
+              <button className="btn" style={{flex:1,height:44,background:'var(--red)',color:'white',border:'none', fontSize:'0.9rem'}} onClick={()=>onReject(order)}>✕ Reject</button>
+            </>
+          ) : (
+            (TRANSITIONS[order.status]||[]).length>0 && (
+              <button className="btn btn-primary" style={{flex:1, height:44, fontSize:'0.9rem'}} onClick={()=>onStatus(order)}>🚀 Update Status</button>
+            )
+          )}
+          {order.payment_status !== 'paid' && order.payment_status !== 'refunded' && (
+            <button className="btn btn-success" style={{height:44, padding:'0 1.25rem', fontSize:'0.9rem'}} onClick={()=>onPay(order)}>
+              {order.payment_method === 'cash_on_delivery' ? '💵 Mark Paid' : '💰 Confirm Payment'}
+            </button>
+          )}
+        </div>
       </div>
     </>
+  );
+}
+
+function CollapsibleSection({ title, icon, children, isOpen, onToggle }) {
+  return (
+    <div className="card" style={{overflow:'hidden', border:'1px solid var(--border)', background:'white'}}>
+      <div className="card-header clickable" onClick={onToggle} style={{padding:'0.875rem 1.25rem', background:isOpen ? 'var(--bg-muted)' : 'white'}}>
+        <div style={{display:'flex', alignItems:'center', gap:'0.75rem'}}>
+           {icon && <span style={{fontSize:'1.1rem'}}>{icon}</span>}
+           <h4 style={{fontSize:'0.9rem', flex:1}}>{title}</h4>
+        </div>
+        <span style={{fontSize:'0.75rem', opacity:0.5, transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s'}}>▼</span>
+      </div>
+      {isOpen && <div className="card-body" style={{padding:'1rem 1.25rem'}}>{children}</div>}
+    </div>
   );
 }
