@@ -14,6 +14,8 @@ import {
   Modal, Field, Toggle, PageHeader, SectionCard, Avatar,
 } from '../components/UI';
 import { fmt, debounce, statusLabel } from '../utils';
+import GeofenceEditor from '../components/GeofenceEditor';
+import LocationPricing from '../components/LocationPricing';
 import { useToast } from '../context';
 
 // ── USERS ─────────────────────────────────────────────────────────
@@ -650,9 +652,10 @@ export function Locations() {
   const toast = useToast();
   const [locs, setLocs]   = useState([]);
   const [loading, setL]   = useState(true);
-  const [modal, setModal] = useState(null);
+  const [modal, setModal] = useState(null); // 'create' | 'edit' | 'geofence' | 'pricing'
   const [form, setForm]   = useState({});
   const [saving, setSaving] = useState(false);
+  const [selectedLoc, setSelectedLoc] = useState(null);
 
   const load = () => {
     setL(true);
@@ -697,6 +700,10 @@ export function Locations() {
                 {loc.phone && <span>📞 {loc.phone}</span>}
                 <span>⏰ {(loc.opening_time || '').slice(0, 5)} – {(loc.closing_time || '').slice(0, 5)}</span>
               </div>
+              <div style={{ display: 'flex', gap: 6, marginTop: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedLoc(loc); setModal('geofence'); }}>Geofence</button>
+                <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedLoc(loc); setModal('pricing'); }}>Pricing</button>
+              </div>
             </div>
           ))}
         </div>
@@ -729,6 +736,31 @@ export function Locations() {
           </div>
           {modal === 'edit' && <Toggle checked={form.is_active === true || form.is_active === 1} onChange={v => setForm(f => ({ ...f, is_active: v }))} label="Location Active" />}
         </div>
+      </Modal>
+
+      {/* Geofence Modal */}
+      <Modal open={modal === 'geofence'} onClose={() => { setModal(null); setSelectedLoc(null); }}
+        title={`Geofence — ${selectedLoc?.name || ''}`} size="modal-xl">
+        {selectedLoc && (
+          <GeofenceEditor
+            locationId={selectedLoc.id}
+            lat={selectedLoc.latitude}
+            lng={selectedLoc.longitude}
+            onClose={() => { setModal(null); setSelectedLoc(null); }}
+          />
+        )}
+      </Modal>
+
+      {/* Pricing Modal */}
+      <Modal open={modal === 'pricing'} onClose={() => { setModal(null); setSelectedLoc(null); }}
+        title={`Location Pricing — ${selectedLoc?.name || ''}`} size="modal-xl">
+        {selectedLoc && (
+          <LocationPricing
+            locationId={selectedLoc.id}
+            locationName={selectedLoc.name}
+            onClose={() => { setModal(null); setSelectedLoc(null); }}
+          />
+        )}
       </Modal>
     </div>
   );

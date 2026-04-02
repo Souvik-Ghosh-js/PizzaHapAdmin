@@ -181,6 +181,21 @@ export const getSupportTickets = (params = {}) => {
 export const replyToTicket = (id, message, status) =>
   post(`/support/tickets/${id}/reply`, { message, ...(status ? { status } : {}) });
 
+// ── Banners ──────────────────────────────────────────────────────
+export const getBanners    = ()          => get('/banners');
+export const createBanner  = (data)      => post('/banners', data);
+export const updateBanner  = (id, data)  => put(`/banners/${id}`, data);
+export const deleteBanner  = (id)        => del(`/banners/${id}`);
+
+// ── Geofences ────────────────────────────────────────────────────
+export const getGeofence   = (locId)       => get(`/locations/${locId}/geofence`);
+export const saveGeofence  = (locId, data) => put(`/locations/${locId}/geofence`, data);
+
+// ── Location Pricing ─────────────────────────────────────────────
+export const getLocationPricing    = (locId)   => get(`/pricing/${locId}`);
+export const setLocationPricing    = (data)    => post('/pricing', data);
+export const deleteLocationPricing = (id, type) => del(`/pricing/${id}?type=${type}`);
+
 // ── Reviews ───────────────────────────────────────────────────────
 export const getReviews = (params = {}) => {
   const admin = getAdminInfo();

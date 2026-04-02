@@ -31,7 +31,8 @@ const ICONS = {
   chevronLeft:   'M15 18l-6-6 6-6',
   chevronRight:  'M9 18l6-6-6-6',
   reviews:       'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
-  sales:         'M18 20V10M12 20V4M6 20v-6'
+  sales:         'M18 20V10M12 20V4M6 20v-6',
+  banners:       ['M4 3h16a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z','M4 11h10a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z','M4 19h6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1z']
 };
 
 const NAV_SECTIONS = [
@@ -52,6 +53,7 @@ const NAV_SECTIONS = [
       { to: '/toppings',   icon: 'toppings',   label: 'Toppings'   },
       { to: '/locations',  icon: 'locations',  label: 'Locations'  },
       { to: '/coupons',    icon: 'coupons',    label: 'Coupons'    },
+      { to: '/banners',    icon: 'banners',    label: 'Banners'    },
     ]
   },
   {

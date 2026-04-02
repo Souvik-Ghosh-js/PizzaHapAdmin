@@ -16,6 +16,7 @@ import { Refunds, Support, Notifications } from './pages/Misc';
 import Riders from './pages/Riders';
 import Reviews from './pages/Reviews';
 import SalesReport from './pages/SalesReport';
+import Banners from './pages/Banners';
 
 function Layout() {
   const [collapsed, setCollapsed]   = useState(false);
@@ -108,6 +109,7 @@ function Layout() {
             <Route path="/toppings"      element={<Toppings />} />
             <Route path="/locations"     element={<Locations />} />
             <Route path="/coupons"       element={<Coupons />} />
+            <Route path="/banners"       element={<Banners />} />
             <Route path="/riders"        element={<Riders />} />
             <Route path="/refunds"       element={<Refunds />} />
             <Route path="/support"       element={<Support />} />
