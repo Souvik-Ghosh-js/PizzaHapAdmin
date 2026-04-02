@@ -80,7 +80,13 @@ export const getUsers  = (params = {}) => {
 export const blockUser = (id, is_blocked) => put(`/users/${id}/block`, { is_blocked });
 
 // ── Categories ────────────────────────────────────────────────────
-export const getCategories    = ()          => get('/menu/categories');
+export const getCategories    = (params = {}) => {
+  const admin = getAdminInfo();
+  const merged = { ...params };
+  if (admin.location_id && merged.location_id === undefined) merged.location_id = admin.location_id;
+  const q = new URLSearchParams(Object.entries(merged).filter(([,v]) => v != null && v !== '')).toString();
+  return get(`/menu/categories${q ? '?' + q : ''}`);
+};
 export const createCategory   = (data)      => post('/menu/categories', data);
 export const updateCategory   = (id, data)  => put(`/menu/categories/${id}`, data);
 export const deleteCategory   = (id)         => del(`/menu/categories/${id}`);
@@ -108,19 +114,37 @@ export const setProductLocation    = (id, data)  => put(`/menu/products/${id}/lo
 export const getAvailabilityMatrix = (id)        => get(`/menu/products/${id}/availability-matrix`);
 
 // Product Sizes
-export const getProductSizes    = (pid)          => get(`/menu/products/${pid}/sizes`);
+export const getProductSizes    = (pid, params = {}) => {
+  const admin = getAdminInfo();
+  const merged = { ...params };
+  if (admin.location_id && merged.location_id === undefined) merged.location_id = admin.location_id;
+  const q = new URLSearchParams(Object.entries(merged).filter(([,v]) => v != null && v !== '')).toString();
+  return get(`/menu/products/${pid}/sizes${q ? '?' + q : ''}`);
+};
 export const createProductSize  = (pid, data)    => post(`/menu/products/${pid}/sizes`, data);
 export const updateProductSize  = (pid,sid,data) => put(`/menu/products/${pid}/sizes/${sid}`, data);
 export const deleteProductSize  = (pid, sid)     => del(`/menu/products/${pid}/sizes/${sid}`);
 
 // ── Toppings ──────────────────────────────────────────────────────
-export const getToppings   = ()          => get('/menu/toppings');
+export const getToppings   = (params = {}) => {
+  const admin = getAdminInfo();
+  const merged = { ...params };
+  if (admin.location_id && merged.location_id === undefined) merged.location_id = admin.location_id;
+  const q = new URLSearchParams(Object.entries(merged).filter(([,v]) => v != null && v !== '')).toString();
+  return get('/menu/toppings' + (q ? '?' + q : ''));
+};
 export const createTopping = (data)      => post('/menu/toppings', data);
 export const updateTopping = (id, data)  => put(`/menu/toppings/${id}`, data);
 export const deleteTopping = (id)        => del(`/menu/toppings/${id}`);
 
 // ── Crusts ────────────────────────────────────────────────────────
-export const getCrusts    = ()          => get('/menu/crusts');
+export const getCrusts    = (params = {}) => {
+  const admin = getAdminInfo();
+  const merged = { ...params };
+  if (admin.location_id && merged.location_id === undefined) merged.location_id = admin.location_id;
+  const q = new URLSearchParams(Object.entries(merged).filter(([,v]) => v != null && v !== '')).toString();
+  return get('/menu/crusts' + (q ? '?' + q : ''));
+};
 export const createCrust  = (data)      => post('/menu/crusts', data);
 export const updateCrust  = (id, data)  => put(`/menu/crusts/${id}`, data);
 export const deleteCrust  = (id)        => del(`/menu/crusts/${id}`);
