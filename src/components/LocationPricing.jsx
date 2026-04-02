@@ -68,9 +68,12 @@ export default function LocationPricing({ locationId, locationName, onClose }) {
     try {
       const promises = [];
       for (const [key, value] of Object.entries(edited)) {
-        if (value === '' || value == null) continue;
         const [type, id] = key.split('_');
-        promises.push(setLocationPricing({ type, item_id: parseInt(id), location_id: locationId, price: parseFloat(value) }));
+        if (value === '' || value == null) {
+          promises.push(deleteLocationPricing(id, type, locationId));
+        } else {
+          promises.push(setLocationPricing({ type, item_id: parseInt(id), location_id: locationId, price: parseFloat(value) }));
+        }
       }
       await Promise.all(promises);
       toast('Pricing saved successfully', 'success');
