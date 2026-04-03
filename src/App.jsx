@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, NavLink, useNavigate, useLocati
 import { io } from 'socket.io-client';
 import { AuthProvider, ToastProvider, useAuth, useToast } from './context';
 import { getNotifications } from './services/api';
-import { playOrderAlert, playCancelAlert } from './utils/notificationSound';
+import { playOrderAlert, playCancelAlert, stopAlertLoop } from './utils/notificationSound';
 
 import Sidebar   from './components/Sidebar';
 import Header    from './components/Header';
@@ -17,15 +17,22 @@ import Riders from './pages/Riders';
 import Reviews from './pages/Reviews';
 import SalesReport from './pages/SalesReport';
 import Banners from './pages/Banners';
+import SizePricing from './pages/SizePricing';
 
 function Layout() {
   const [collapsed, setCollapsed]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unread, setUnread]         = useState(0);
   const navigate = useNavigate();
+  const location = useLocation();
   const { admin } = useAuth();
   const toast = useToast();
   const socketRef = useRef(null);
+
+  // Stop looping alert when admin navigates to orders page
+  useEffect(() => {
+    if (location.pathname === '/orders') stopAlertLoop();
+  }, [location.pathname]);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,6 +117,7 @@ function Layout() {
             <Route path="/locations"     element={<Locations />} />
             <Route path="/coupons"       element={<Coupons />} />
             <Route path="/banners"       element={<Banners />} />
+            <Route path="/size-pricing"  element={<SizePricing />} />
             <Route path="/riders"        element={<Riders />} />
             <Route path="/refunds"       element={<Refunds />} />
             <Route path="/support"       element={<Support />} />

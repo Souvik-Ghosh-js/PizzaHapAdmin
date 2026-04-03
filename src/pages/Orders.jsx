@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { getOrders, getOrderDetail, updateOrderStatus, updatePaymentStatus, getRiders, assignRider, acceptRejectOrder } from '../services/api';
 import { Badge, Pagination, Select, Spinner, EmptyState, Modal, Field, PageHeader, OrderProgress, InfoRow, SectionCard } from '../components/UI';
 import { fmt, statusLabel, debounce } from '../utils';
+import { stopAlertLoop } from '../utils/notificationSound';
 import { useToast, useAuth } from '../context';
 
 const STATUS_OPTS = [
@@ -86,6 +87,7 @@ export default function Orders() {
     setAL(true);
     try {
       await acceptRejectOrder(orderId, { action, reason });
+      stopAlertLoop();
       toast(`Order ${action}ed successfully`, 'success');
       if (action === 'reject') setRM(null);
       load(filters);
@@ -105,6 +107,98 @@ export default function Orders() {
       if (drawer?.id === payModal.id) refreshDrawer(payModal.id);
     } catch(e) { toast(e.message,'error'); }
     finally { setAL(false); }
+  };
+
+  const handlePrint = (order) => {
+    const printWindow = window.open('', '_blank', 'width=800,height=900');
+    if (!printWindow) return toast('Pop-up blocked. Please allow pop-ups to print.', 'error');
+
+    const itemsHtml = order.items.map(item => `
+      <tr>
+        <td style="padding: 10px 0; border-bottom: 1px solid #eee;">
+          <div style="font-weight: bold; font-size: 14px; color: #1a1a1a;">${item.product_name}</div>
+          <div style="font-size: 11px; color: #666; margin-top: 2px;">${item.size_name}${item.crust_name ? ` · ${item.crust_name}` : ''}</div>
+          ${item.toppings?.length ? `<div style="font-size: 10px; color: #FF6B35; font-weight: 600; margin-top: 4px;">+ ${item.toppings.map(t => t.topping_name || t.name).join(', ')}</div>` : ''}
+          ${item.special_instructions ? `<div style="font-size: 10px; color: #888; font-style: italic; margin-top: 4px;">"${item.special_instructions}"</div>` : ''}
+        </td>
+        <td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: center; color: #1a1a1a;">x${item.quantity}</td>
+        <td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: bold; color: #1a1a1a;">${fmt.currency(item.total_price)}</td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>PizzaHap Bill - ${order.order_number}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap');
+            body { font-family: 'Nunito', sans-serif; padding: 40px; color: #1A1A1A; line-height: 1.5; background: #fff; }
+            .header { text-align: center; margin-bottom: 35px; border-bottom: 2px solid #CC1F1F; padding-bottom: 20px; }
+            .logo { width: 140px; margin-bottom: 12px; }
+            .bill-info { display: flex; justify-content: space-between; margin-bottom: 35px; font-size: 13px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+            .summary { margin-left: auto; width: 280px; }
+            .summary-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; color: #444; }
+            .total { font-weight: 800; font-size: 19px; color: #CC1F1F; border-top: 2px dashed #CC1F1F; margin-top: 12px; padding-top: 12px; }
+            .footer { text-align: center; margin-top: 60px; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 20px; }
+            h2 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <img src="/logo.png" class="logo" onerror="this.style.display='none'" />
+            <h2 style="margin:0; font-size: 24px; color: #CC1F1F;">PizzaHap</h2>
+            <p style="margin:6px 0; color:#666; font-weight: 600;">${order.location_name || 'Deliciously Yours'}</p>
+          </div>
+          <div class="bill-info">
+            <div>
+              <div style="color:#999; text-transform:uppercase; font-size:10px; font-weight:800; margin-bottom:6px; letter-spacing: 0.05em;">Customer Details</div>
+              <div style="font-weight:700; font-size:16px;">${order.user_name || 'Walk-in Customer'}</div>
+              <div style="color: #555; margin-top: 2px;">${order.user_mobile || ''}</div>
+              ${order.delivery_address ? `<div style="max-width:240px; color: #666; margin-top: 4px; font-size: 12px;">${order.delivery_address}</div>` : ''}
+              <div style="margin-top: 8px; font-weight: 700; color: #CC1F1F; font-size: 11px;">[ ${order.delivery_type.toUpperCase()} ]</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="color:#999; text-transform:uppercase; font-size:10px; font-weight:800; margin-bottom:6px; letter-spacing: 0.05em;">Order Information</div>
+              <div style="font-weight:800; color:#1A1A1A; font-size: 16px;">#${order.order_number}</div>
+              <div style="color: #666; margin-top: 2px;">${fmt.datetime(order.created_at)}</div>
+              <div style="text-transform:capitalize; color: #CC1F1F; font-weight: 700; margin-top: 4px;">${order.payment_method.replace(/_/g,' ')}</div>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr style="border-bottom: 2px solid #1A1A1A; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #666;">
+                <th style="padding: 12px 0;">Menu Item</th>
+                <th style="padding: 12px 0; text-align: center;">Qty</th>
+                <th style="padding: 12px 0; text-align: right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>${itemsHtml}</tbody>
+          </table>
+          <div class="summary">
+            <div class="summary-row"><span>Subtotal</span><span style="font-weight:700;">${fmt.currency(order.subtotal)}</span></div>
+            ${order.discount_amount > 0 ? `<div class="summary-row" style="color:#27AE60; font-weight: 600;"><span>Discount Applied</span><span>- ${fmt.currency(order.discount_amount)}</span></div>` : ''}
+            ${order.coins_redeemed > 0 ? `<div class="summary-row" style="color:#F39C12; font-weight: 600;"><span>Coins Redeemed</span><span>- ${fmt.currency(order.coins_redeemed)}</span></div>` : ''}
+            <div class="summary-row"><span>Delivery Charges</span><span style="font-weight:700;">${fmt.currency(order.delivery_fee)}</span></div>
+            <div class="summary-row total"><span>Total Payable</span><span>${fmt.currency(order.total_amount)}</span></div>
+          </div>
+          <div class="footer">
+            <p style="font-weight: 700; color: #444; margin-bottom: 5px;">Thank you for ordering from PizzaHap!</p>
+            <p>We hope you enjoy your meal. Follow us for more delicious offers.</p>
+          </div>
+          <script>
+            window.onload = () => {
+              setTimeout(() => {
+                window.print();
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   return (
@@ -195,6 +289,7 @@ export default function Orders() {
                   {drawer.payment_method === 'cash_on_delivery' ? '💵 Mark Paid' : '💰 Confirm Payment'}
                 </button>
               )}
+              <button className="btn btn-ghost" style={{ minWidth: 120, height: 44, borderColor: 'var(--border-strong)' }} onClick={() => handlePrint(drawer)}>🖨️ Print Bill</button>
             </>
           )}
         </div>}>

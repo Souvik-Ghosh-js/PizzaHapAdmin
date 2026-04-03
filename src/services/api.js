@@ -220,6 +220,11 @@ export const getLocationPricing    = (locId)   => get(`/pricing/${locId}`);
 export const setLocationPricing    = (data)    => post('/pricing', data);
 export const deleteLocationPricing = (id, type, locId) => del(`/pricing/${id}?type=${type}&location_id=${locId}`);
 
+// ── Size-based Pricing ───────────────────────────────────────────
+export const getSizePricing    = ()      => get('/size-pricing');
+export const setSizePricing    = (data)  => post('/size-pricing', data);
+export const deleteSizePricing = (id, type) => del(`/size-pricing/${id}?type=${type}`);
+
 // ── Reviews ───────────────────────────────────────────────────────
 export const getReviews = (params = {}) => {
   const admin = getAdminInfo();
