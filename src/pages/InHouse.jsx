@@ -476,15 +476,18 @@ export default function InHouse() {
               ) : modalSizes.length > 0 ? (
                 <Field label="Select Size" required>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '0.5rem' }}>
-                    {modalSizes.map(size => (
-                      <button key={size.id}
-                        className={`btn ${customizing.size_id === size.id ? 'btn-primary' : 'btn-ghost'}`}
-                        onClick={() => setCustomizing(c => ({ ...c, size_id: size.id }))}
-                        style={{ flexDirection: 'column', padding: '0.75rem', height: 'auto', justifyContent: 'center' }}>
-                        <div className="font-semi" style={{ fontSize: '0.8rem' }}>{size.size_name}</div>
-                        <div className="font-bold" style={{ fontSize: '0.875rem', marginTop: 2 }}>{fmt.currency(size.price)}</div>
-                      </button>
-                    ))}
+                      {modalSizes.map(size => {
+                        const effP = size.location_price != null ? parseFloat(size.location_price) : parseFloat(size.price);
+                        return (
+                          <button key={size.id}
+                            className={`btn ${customizing.size_id === size.id ? 'btn-primary' : 'btn-ghost'}`}
+                            onClick={() => setCustomizing(c => ({ ...c, size_id: size.id }))}
+                            style={{ flexDirection: 'column', padding: '0.75rem', height: 'auto', justifyContent: 'center' }}>
+                            <div className="font-semi" style={{ fontSize: '0.8rem' }}>{size.size_name}</div>
+                            <div className="font-bold" style={{ fontSize: '0.875rem', marginTop: 2 }}>{fmt.currency(effP)}</div>
+                          </button>
+                        );
+                      })}
                   </div>
                 </Field>
               ) : (
