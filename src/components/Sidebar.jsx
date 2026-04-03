@@ -54,7 +54,6 @@ const NAV_SECTIONS = [
       { to: '/locations',  icon: 'locations',  label: 'Locations'  },
       { to: '/coupons',    icon: 'coupons',    label: 'Coupons'    },
       { to: '/banners',       icon: 'banners',    label: 'Banners'       },
-      { to: '/size-pricing',  icon: 'products',   label: 'Size Pricing'  },
     ]
   },
   {

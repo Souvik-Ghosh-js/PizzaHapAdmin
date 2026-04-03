@@ -117,7 +117,6 @@ function Layout() {
             <Route path="/locations"     element={<Locations />} />
             <Route path="/coupons"       element={<Coupons />} />
             <Route path="/banners"       element={<Banners />} />
-            <Route path="/size-pricing"  element={<SizePricing />} />
             <Route path="/riders"        element={<Riders />} />
             <Route path="/refunds"       element={<Refunds />} />
             <Route path="/support"       element={<Support />} />
