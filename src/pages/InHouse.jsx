@@ -99,7 +99,8 @@ export default function InHouse() {
     const sizeRaw = modalSizes.find(s => s.id === customizing.size_id)
               || { id: null, size_name: 'Regular', price: selectedProduct.base_price || 0 };
     // Always store prices as numbers — mysql2 returns DECIMAL as string
-    const size = { ...sizeRaw, price: parseFloat(sizeRaw.price) || 0 };
+    const price = sizeRaw.location_price != null ? parseFloat(sizeRaw.location_price) : parseFloat(sizeRaw.price);
+    const size = { ...sizeRaw, price: price || 0 };
 
     const toppingsList = customizing.toppings
       .map(tid => {
@@ -439,7 +440,9 @@ export default function InHouse() {
         const hasCrust    = cat.has_crust    || selectedProduct.has_crust;
         const _selSize    = modalSizes.find(s => s.id === customizing.size_id)
                           || { id: null, size_name: 'Regular', price: selectedProduct.base_price || 0 };
-        const selectedSize = { ..._selSize, price: parseFloat(_selSize.price) || 0 };
+        
+        const _sPrice = _selSize.location_price != null ? parseFloat(_selSize.location_price) : parseFloat(_selSize.price);
+        const selectedSize = { ..._selSize, price: _sPrice || 0 };
         
         // Dynamic prices based on size
         const sCrustPrice = modalPricing.crusts.find(cp => cp.crust_id === customizing.customizing?.crust_id || customizing.crust_id === cp.crust_id && cp.size_code === selectedSize.size_code);
