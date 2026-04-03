@@ -36,6 +36,7 @@ export default function InHouse() {
   // Modal state
   const [selectedProduct, setSP]    = useState(null);   // full product object
   const [modalSizes, setModalSizes] = useState([]);     // sizes fetched on open
+  const [modalPricing, setModalPricing] = useState({ crusts: [], toppings: [] });
   const [loadingSizes, setLS]       = useState(false);
   const [customizing, setCustomizing] = useState({
     size_id: null, crust_id: null, quantity: 1, toppings: [], special_instructions: '',
@@ -73,12 +74,17 @@ export default function InHouse() {
     setLS(true);
     try {
       const r = await getProductSizes(p.id);
-      const sizes = r.data || [];
+      const sizes = r.data?.sizes || [];
+      const crustPricing = r.data?.crust_pricing || [];
+      const toppingPricing = r.data?.topping_pricing || [];
+      
       setModalSizes(sizes);
+      setModalPricing({ crusts: crustPricing, toppings: toppingPricing });
       // Auto-select first size
       setCustomizing(c => ({ ...c, size_id: sizes[0]?.id ?? null }));
     } catch {
       setModalSizes([]);
+      setModalPricing({ crusts: [], toppings: [] });
     } finally {
       setLS(false);
     }
@@ -96,12 +102,18 @@ export default function InHouse() {
     const size = { ...sizeRaw, price: parseFloat(sizeRaw.price) || 0 };
 
     const toppingsList = customizing.toppings
-      .map(tid => toppings.find(t => t.id === tid))
-      .filter(Boolean)
-      .map(t => ({ ...t, price: parseFloat(t.price) || 0 }));
+      .map(tid => {
+        const top = toppings.find(t => t.id === tid);
+        if (!top) return null;
+        // Use size specific price if available
+        const sPrice = modalPricing.toppings.find(tp => tp.topping_id === tid && tp.size_code === size.size_code);
+        return { ...top, price: sPrice ? parseFloat(sPrice.price) : (parseFloat(top.price) || 0) };
+      })
+      .filter(Boolean);
 
     const crustObj   = crusts.find(c => c.id === customizing.crust_id) || null;
-    const crustPrice = parseFloat(crustObj?.extra_price) || 0;
+    const sCrustPrice = modalPricing.crusts.find(cp => cp.crust_id === customizing.crust_id && cp.size_code === size.size_code);
+    const crustPrice = sCrustPrice ? parseFloat(sCrustPrice.extra_price) : (parseFloat(crustObj?.extra_price) || 0);
 
     // Key is stable — built from IDs, not from the customizing object reference
     const key = [
@@ -428,9 +440,19 @@ export default function InHouse() {
         const _selSize    = modalSizes.find(s => s.id === customizing.size_id)
                           || { id: null, size_name: 'Regular', price: selectedProduct.base_price || 0 };
         const selectedSize = { ..._selSize, price: parseFloat(_selSize.price) || 0 };
-        const crustExtra  = parseFloat(crusts.find(c => c.id === customizing.crust_id)?.extra_price) || 0;
-        const toppingsCost = customizing.toppings.reduce((s, tid) =>
-          s + (parseFloat(toppings.find(t => t.id === tid)?.price) || 0), 0);
+        
+        // Dynamic prices based on size
+        const sCrustPrice = modalPricing.crusts.find(cp => cp.crust_id === customizing.customizing?.crust_id || customizing.crust_id === cp.crust_id && cp.size_code === selectedSize.size_code);
+        // Better crust search:
+        const currentCrust = modalPricing.crusts.find(cp => cp.crust_id === customizing.crust_id && cp.size_code === selectedSize.size_code);
+        const crustExtra = currentCrust ? parseFloat(currentCrust.extra_price) : (parseFloat(crusts.find(c => c.id === customizing.crust_id)?.extra_price) || 0);
+
+        const toppingsCost = customizing.toppings.reduce((s, tid) => {
+          const sPrice = modalPricing.toppings.find(tp => tp.topping_id === tid && tp.size_code === selectedSize.size_code);
+          const topPrice = sPrice ? parseFloat(sPrice.price) : (parseFloat(toppings.find(t => t.id === tid)?.price) || 0);
+          return s + topPrice;
+        }, 0);
+
         const lineCost    = (selectedSize.price + crustExtra + toppingsCost) * customizing.quantity;
 
         return (

@@ -307,7 +307,7 @@ export function Menu() {
 
   const openSizes = async (productId) => {
     setSizesModal(productId);
-    try { const r = await getProductSizes(productId); setSizes(r.data || []); }
+    try { const r = await getProductSizes(productId); setSizes(r.data?.sizes || []); }
     catch (e) { toast(e.message, 'error'); }
   };
 
@@ -318,7 +318,7 @@ export function Menu() {
       await createProductSize(sizesModal, { size_name: sizeForm.size_name, size_code: sizeForm.size_code || sizeForm.size_name.slice(0,3).toUpperCase(), price: parseFloat(sizeForm.price) });
       toast('Size added', 'success');
       setSizeForm({});
-      const r = await getProductSizes(sizesModal); setSizes(r.data || []);
+      const r = await getProductSizes(sizesModal); setSizes(r.data?.sizes || []);
     } catch (e) { toast(e.message, 'error'); }
     finally { setSS(false); }
   };
