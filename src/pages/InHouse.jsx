@@ -44,18 +44,21 @@ export default function InHouse() {
 
   // ── Initial data load ───────────────────────────────────────────
   useEffect(() => {
+    getProducts({ location_id: admin?.location_id, limit: 200, show_unavailable: 'false' })
+      .then(p => {
+        setProducts(p.data || []);
+      }).catch(e => toast(e.message, 'error'));
+
+    // Separate some static data
     Promise.all([
-      getProducts({ limit: 200, show_unavailable: 'false' }),
       getCategories(),
       getToppings(),
       getCrusts(),
-    ]).then(([p, c, t, cr]) => {
-      setProducts(p.data || []);
+    ]).then(([c, t, cr]) => {
       setCategories(c.data || []);
       setToppings((t.data || []).filter(x => x.is_available));
       setCrusts((cr.data || []).filter(x => x.is_available));
-    }).catch(e => toast(e.message, 'error'))
-      .finally(() => setLoading(false));
+    }).finally(() => setLoading(false));
   }, []);
 
   const filtered = products.filter(p =>
