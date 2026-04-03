@@ -506,19 +506,23 @@ export default function InHouse() {
                       style={{ fontSize: '0.8rem' }}>
                       Regular (no extra)
                     </button>
-                    {crusts.map(crust => (
-                      <button key={crust.id}
-                        className={`btn ${customizing.crust_id === crust.id ? 'btn-primary' : 'btn-ghost'}`}
-                        onClick={() => setCustomizing(c => ({ ...c, crust_id: crust.id }))}
-                        style={{ flexDirection: 'column', height: 'auto', padding: '0.5rem', fontSize: '0.8rem' }}>
-                        <span>{crust.name}</span>
-                        {crust.extra_price > 0 && (
-                          <span style={{ fontSize: '0.7rem', color: customizing.crust_id === crust.id ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)', marginTop: 2 }}>
-                            +{fmt.currency(crust.extra_price)}
-                          </span>
-                        )}
-                      </button>
-                    ))}
+                    {crusts.map(crust => {
+                      const cPriceMatch = modalPricing.crusts.find(cp => cp.crust_id === crust.id && cp.size_code === selectedSize.size_code);
+                      const cPrice = cPriceMatch ? parseFloat(cPriceMatch.extra_price) : parseFloat(crust.extra_price);
+                      return (
+                        <button key={crust.id}
+                          className={`btn ${customizing.crust_id === crust.id ? 'btn-primary' : 'btn-ghost'}`}
+                          onClick={() => setCustomizing(c => ({ ...c, crust_id: crust.id }))}
+                          style={{ flexDirection: 'column', height: 'auto', padding: '0.5rem', fontSize: '0.8rem' }}>
+                          <span>{crust.name}</span>
+                          {cPrice > 0 && (
+                            <span style={{ fontSize: '0.7rem', color: customizing.crust_id === crust.id ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)', marginTop: 2 }}>
+                              +{fmt.currency(cPrice)}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </Field>
               )}
@@ -529,6 +533,8 @@ export default function InHouse() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', maxHeight: 220, overflowY: 'auto', padding: '0.25rem' }}>
                     {toppings.map(topping => {
                       const sel = customizing.toppings.includes(topping.id);
+                      const tPriceMatch = modalPricing.toppings.find(tp => tp.topping_id === topping.id && tp.size_code === selectedSize.size_code);
+                      const tPrice = tPriceMatch ? parseFloat(tPriceMatch.price) : parseFloat(topping.price);
                       return (
                         <button key={topping.id}
                           className={`btn ${sel ? 'btn-primary' : 'btn-ghost'}`}
@@ -543,7 +549,7 @@ export default function InHouse() {
                             <span style={{ fontSize: '0.65rem', color: topping.is_veg ? 'var(--green)' : 'var(--red)' }}>●</span>
                             {topping.name}
                           </span>
-                          <span className="font-bold">+{fmt.currency(topping.price)}</span>
+                          <span className="font-bold">+{fmt.currency(tPrice)}</span>
                         </button>
                       );
                     })}
