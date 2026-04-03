@@ -44,7 +44,7 @@ export default function LocationPricing({ locationId, locationName, onClose }) {
         // Build sizes from all products
         const products = productsRes.data?.data || productsRes.data || [];
         const sizePromises = products.map(p =>
-          getProductSizes(p.id).then(r => (r.data || []).map(s => ({ ...s, product_name: p.name }))).catch(() => [])
+          getProductSizes(p.id).then(r => (r.data?.sizes || []).map(s => ({ ...s, product_name: p.name }))).catch(() => [])
         );
         return Promise.all(sizePromises).then(sizeSets => {
           setAllSizes(sizeSets.flat());
@@ -56,6 +56,11 @@ export default function LocationPricing({ locationId, locationName, onClose }) {
           (pricingData.sizes || []).forEach(o => { init[`size_${o.product_size_id}`] = o.price; });
           (pricingData.crusts || []).forEach(o => { init[`crust_${o.crust_id}`] = o.extra_price; });
           (pricingData.toppings || []).forEach(o => { init[`topping_${o.topping_id}`] = o.price; });
+          
+          // Size-specific overrides
+          (pricingData.crust_size_overrides || []).forEach(o => { init[`crust_${o.crust_id}_${o.size_code}`] = o.extra_price; });
+          (pricingData.topping_size_overrides || []).forEach(o => { init[`topping_${o.topping_id}_${o.size_code}`] = o.price; });
+
           setEdited(init);
         });
       })
@@ -68,11 +73,20 @@ export default function LocationPricing({ locationId, locationName, onClose }) {
     try {
       const promises = [];
       for (const [key, value] of Object.entries(edited)) {
-        const [type, id] = key.split('_');
+        const parts = key.split('_');
+        const type = parts[0];
+        const id = parts[1];
+        const size_code = parts[2]; // Optional
+
         if (value === '' || value == null) {
-          promises.push(deleteLocationPricing(id, type, locationId));
+          promises.push(deleteLocationPricing(id, type, locationId).then(() => {
+            if (size_code) return deleteLocationPricing(id, type, locationId, size_code);
+          }));
         } else {
-          promises.push(setLocationPricing({ type, item_id: parseInt(id), location_id: locationId, price: parseFloat(value) }));
+          promises.push(setLocationPricing({ 
+            type, item_id: parseInt(id), location_id: locationId, price: parseFloat(value),
+            ...(size_code ? { size_code } : {})
+          }));
         }
       }
       await Promise.all(promises);
@@ -143,28 +157,47 @@ export default function LocationPricing({ locationId, locationName, onClose }) {
               </tr>
             ))}
             {tab === 1 && allCrusts.map(crust => (
-              <tr key={crust.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: '8px 12px' }}>{crust.name}</td>
-                <td style={{ padding: '8px 12px' }}>Rs. {parseFloat(crust.extra_price).toFixed(2)}</td>
-                <td style={{ padding: '8px 12px' }}>
-                  <input className="input" type="number" step="0.01" placeholder="Default"
-                    style={{ width: 120 }}
-                    value={getOverridePrice('crust', crust.id)}
-                    onChange={e => setPrice('crust', crust.id, e.target.value)} />
-                </td>
-              </tr>
+              ['regular', 'medium', 'large'].map(sz => {
+                const sName = sz.charAt(0).toUpperCase() + sz.slice(1);
+                // Find default size-based price if it exists
+                const sDef = allSizes.find(s => s.size_code === sz); // Not quite right, sizes are per product
+                // Actually, the defaults for crust/topping sizes are in the new Matrix too, but I'll simpler it.
+                return (
+                  <tr key={`${crust.id}_${sz}`} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '8px 12px' }}>
+                      <div>{crust.name}</div>
+                      <div className="text-xs text-muted">{sName} Size</div>
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>Rs. {parseFloat(crust.extra_price).toFixed(2)}</td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <input className="input" type="number" step="0.01" placeholder="Default"
+                        style={{ width: 120 }}
+                        value={getOverridePrice('crust', `${crust.id}_${sz}`)}
+                        onChange={e => setPrice('crust', `${crust.id}_${sz}`, e.target.value)} />
+                    </td>
+                  </tr>
+                );
+              })
             ))}
             {tab === 2 && allToppings.map(top => (
-              <tr key={top.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: '8px 12px' }}>{top.name}</td>
-                <td style={{ padding: '8px 12px' }}>Rs. {parseFloat(top.price).toFixed(2)}</td>
-                <td style={{ padding: '8px 12px' }}>
-                  <input className="input" type="number" step="0.01" placeholder="Default"
-                    style={{ width: 120 }}
-                    value={getOverridePrice('topping', top.id)}
-                    onChange={e => setPrice('topping', top.id, e.target.value)} />
-                </td>
-              </tr>
+              ['regular', 'medium', 'large'].map(sz => {
+                const sName = sz.charAt(0).toUpperCase() + sz.slice(1);
+                return (
+                  <tr key={`${top.id}_${sz}`} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '8px 12px' }}>
+                      <div>{top.name}</div>
+                      <div className="text-xs text-muted">{sName} Size</div>
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>Rs. {parseFloat(top.price).toFixed(2)}</td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <input className="input" type="number" step="0.01" placeholder="Default"
+                        style={{ width: 120 }}
+                        value={getOverridePrice('topping', `${top.id}_${sz}`)}
+                        onChange={e => setPrice('topping', `${top.id}_${sz}`, e.target.value)} />
+                    </td>
+                  </tr>
+                );
+              })
             ))}
           </tbody>
         </table>

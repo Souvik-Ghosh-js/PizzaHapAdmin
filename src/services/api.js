@@ -218,7 +218,8 @@ export const saveGeofence  = (locId, data) => put(`/locations/${locId}/geofence`
 // ── Location Pricing ─────────────────────────────────────────────
 export const getLocationPricing    = (locId)   => get(`/pricing/${locId}`);
 export const setLocationPricing    = (data)    => post('/pricing', data);
-export const deleteLocationPricing = (id, type, locId) => del(`/pricing/${id}?type=${type}&location_id=${locId}`);
+export const deleteLocationPricing = (id, type, locId, size_code) => 
+  del(`/pricing/${id}?type=${type}&location_id=${locId}${size_code ? '&size_code=' + size_code : ''}`);
 
 // ── Size-based Pricing ───────────────────────────────────────────
 export const getSizePricing    = ()      => get('/size-pricing');
