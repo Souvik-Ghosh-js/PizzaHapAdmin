@@ -3,8 +3,8 @@ import { getSizePricing, setSizePricing, getToppings, getCrusts } from '../servi
 import { Spinner, PageHeader } from '../components/UI';
 import { useToast } from '../context';
 
-const SIZE_CODES = ['REG', 'MED', 'LG'];
-const SIZE_LABELS = { REG: 'Regular', MED: 'Medium', LG: 'Large' };
+const SIZE_CODES = ['regular', 'medium', 'large'];
+const SIZE_LABELS = { regular: 'Regular', medium: 'Medium', large: 'Large' };
 const TABS = ['Crusts', 'Toppings'];
 
 export default function SizePricing() {

@@ -439,21 +439,18 @@ export default function InHouse() {
         const hasToppings = cat.has_toppings || selectedProduct.has_toppings;
         const hasCrust    = cat.has_crust    || selectedProduct.has_crust;
         const _selSize    = modalSizes.find(s => s.id === customizing.size_id)
-                          || { id: null, size_name: 'Regular', price: selectedProduct.base_price || 0 };
+                          || { id: null, size_name: 'Regular', size_code: 'regular', price: selectedProduct.base_price || 0 };
         
         const _sPrice = _selSize.location_price != null ? parseFloat(_selSize.location_price) : parseFloat(_selSize.price);
         const selectedSize = { ..._selSize, price: _sPrice || 0 };
         
-        // Dynamic prices based on size
-        const sCrustPrice = modalPricing.crusts.find(cp => cp.crust_id === customizing.customizing?.crust_id || customizing.crust_id === cp.crust_id && cp.size_code === selectedSize.size_code);
-        // Better crust search:
         const currentCrust = modalPricing.crusts.find(cp => cp.crust_id === customizing.crust_id && cp.size_code === selectedSize.size_code);
         const crustExtra = currentCrust ? parseFloat(currentCrust.extra_price) : (parseFloat(crusts.find(c => c.id === customizing.crust_id)?.extra_price) || 0);
 
-        const toppingsCost = customizing.toppings.reduce((s, tid) => {
-          const sPrice = modalPricing.toppings.find(tp => tp.topping_id === tid && tp.size_code === selectedSize.size_code);
-          const topPrice = sPrice ? parseFloat(sPrice.price) : (parseFloat(toppings.find(t => t.id === tid)?.price) || 0);
-          return s + topPrice;
+        const toppingsCost = customizing.toppings.reduce((acc, tid) => {
+          const tMatch = modalPricing.toppings.find(tp => tp.topping_id === tid && tp.size_code === selectedSize.size_code);
+          const topPrice = tMatch ? parseFloat(tMatch.price) : (parseFloat(toppings.find(t => t.id === tid)?.price) || 0);
+          return acc + topPrice;
         }, 0);
 
         const lineCost    = (selectedSize.price + crustExtra + toppingsCost) * customizing.quantity;
