@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { getSizePricing, setSizePricing, getToppings, getCrusts } from '../services/api';
-import { Spinner, PageHeader } from '../components/UI';
+import { getSizePricing, setSizePricing, getToppings, getCrusts, getCategories, getProducts, getProductSizes, updateProductSize } from '../services/api';
+import { Spinner, PageHeader, Select } from '../components/UI';
 import { useToast } from '../context';
 
 const SIZE_CODES = ['regular', 'medium', 'large'];
 const SIZE_LABELS = { regular: 'Regular', medium: 'Medium', large: 'Large' };
-const TABS = ['Crusts', 'Toppings'];
+const TABS = ['Products', 'Crusts', 'Toppings'];
 
 export default function SizePricing() {
   const toast = useToast();
@@ -14,15 +14,20 @@ export default function SizePricing() {
   const [saving, setSaving] = useState(false);
   const [allCrusts, setAllCrusts] = useState([]);
   const [allToppings, setAllToppings] = useState([]);
-  // edited: { 'crust_<id>_<sizeCode>': price, 'topping_<id>_<sizeCode>': price }
+  const [allProducts, setAllProducts] = useState([]);
+  const [allSizes, setAllSizes] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
+  const [selectedCat, setSelectedCat] = useState('all');
+  // edited: { 'crust_<id>_<sizeCode>': price, 'topping_<id>_<sizeCode>': price, 'product_<pid>_<sid>': price }
   const [edited, setEdited] = useState({});
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([getCrusts(), getToppings(), getSizePricing()])
-      .then(([crustsRes, toppingsRes, pricingRes]) => {
+    Promise.all([getCrusts(), getToppings(), getSizePricing(), getCategories()])
+      .then(([crustsRes, toppingsRes, pricingRes, catsRes]) => {
         setAllCrusts(crustsRes.data || []);
         setAllToppings(toppingsRes.data || []);
+        setAllCategories(catsRes.data || []);
         const init = {};
         (pricingRes.data?.crusts || []).forEach(o => {
           init[`crust_${o.crust_id}_${o.size_code}`] = o.extra_price;
@@ -31,10 +36,33 @@ export default function SizePricing() {
           init[`topping_${o.topping_id}_${o.size_code}`] = o.price;
         });
         setEdited(init);
+        // Load initial products
+        return fetchProductsAndSizes('all');
       })
       .catch(e => toast(e.message, 'error'))
       .finally(() => setLoading(false));
   }, []);
+
+  const fetchProductsAndSizes = async (catId) => {
+    try {
+      const params = { limit: 500 };
+      if (catId !== 'all') params.category_id = catId;
+      const res = await getProducts(params);
+      const prods = res.data?.data || res.data || [];
+      const sizePromises = prods.map(p => 
+        getProductSizes(p.id).then(r => (r.data?.sizes || []).map(s => ({ ...s, product_name: p.name, product_id: p.id }))).catch(() => [])
+      );
+      const sizeSets = await Promise.all(sizePromises);
+      setAllSizes(sizeSets.flat());
+    } catch (e) { toast(e.message, 'error'); }
+  };
+
+  const handleCatChange = async (catId) => {
+    setSelectedCat(catId);
+    setLoading(true);
+    await fetchProductsAndSizes(catId);
+    setLoading(false);
+  };
 
   const getVal = (type, id, sizeCode) => edited[`${type}_${id}_${sizeCode}`] ?? '';
   const setVal = (type, id, sizeCode, value) => {
@@ -50,8 +78,14 @@ export default function SizePricing() {
         const parts = key.split('_');
         const type = parts[0];
         const id = parseInt(parts[1]);
-        const sizeCode = parts[2];
-        promises.push(setSizePricing({ type, item_id: id, size_code: sizeCode, price: parseFloat(value) }));
+        
+        if (type === 'product') {
+          const sid = parseInt(parts[2]);
+          promises.push(updateProductSize(id, sid, { price: parseFloat(value) }));
+        } else {
+          const sizeCode = parts[2];
+          promises.push(setSizePricing({ type, item_id: id, size_code: sizeCode, price: parseFloat(value) }));
+        }
       }
       await Promise.all(promises);
       toast('Size pricing saved successfully', 'success');
@@ -75,15 +109,27 @@ export default function SizePricing() {
         }
       />
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: '1rem' }}>
-        {TABS.map((t, i) => (
-          <button key={t}
-            className={`btn btn-sm ${tab === i ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setTab(i)}>
-            {t}
-          </button>
-        ))}
+      {/* Tabs and Filter */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {TABS.map((t, i) => (
+            <button key={t}
+              className={`btn btn-sm ${tab === i ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setTab(i)}>
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {tab === 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span className="text-sm font-semi text-muted">Category:</span>
+            <select className="input" style={{ width: 160, height: 36, fontSize: '0.85rem' }} value={selectedCat} onChange={e => handleCatChange(e.target.value)}>
+              <option value="all">All products</option>
+              {allCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="card">
@@ -93,13 +139,31 @@ export default function SizePricing() {
               <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
                 <th style={{ padding: '10px 12px', minWidth: 160 }}>Item</th>
                 <th style={{ padding: '10px 12px' }}>Default Price</th>
-                {SIZE_CODES.map(sc => (
-                  <th key={sc} style={{ padding: '10px 12px', minWidth: 120 }}>{SIZE_LABELS[sc]} ({sc})</th>
-                ))}
+                {tab === 0 ? <th style={{ padding: '10px 12px' }}>New Price</th>
+                  : SIZE_CODES.map(sc => (
+                    <th key={sc} style={{ padding: '10px 12px', minWidth: 120 }}>{SIZE_LABELS[sc]} ({sc})</th>
+                  ))
+                }
               </tr>
             </thead>
             <tbody>
-              {tab === 0 && allCrusts.map(crust => (
+              {tab === 0 && allSizes.map(size => (
+                <tr key={size.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '8px 12px', fontWeight: 500 }}>
+                    <div>{size.product_name}</div>
+                    <div className="text-xs text-muted">{size.size_name}</div>
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>Rs. {parseFloat(size.price).toFixed(2)}</td>
+                  <td style={{ padding: '8px 12px' }}>
+                    <input className="input" type="number" step="0.01"
+                      placeholder={parseFloat(size.price).toFixed(2)}
+                      style={{ width: 120 }}
+                      value={getVal('product', size.product_id, size.id)}
+                      onChange={e => setVal('product', size.product_id, size.id, e.target.value)} />
+                  </td>
+                </tr>
+              ))}
+              {tab === 1 && allCrusts.map(crust => (
                 <tr key={crust.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '8px 12px', fontWeight: 500 }}>{crust.name}</td>
                   <td style={{ padding: '8px 12px' }}>Rs. {parseFloat(crust.extra_price).toFixed(2)}</td>
@@ -114,7 +178,7 @@ export default function SizePricing() {
                   ))}
                 </tr>
               ))}
-              {tab === 1 && allToppings.map(top => (
+              {tab === 2 && allToppings.map(top => (
                 <tr key={top.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '8px 12px', fontWeight: 500 }}>{top.name}</td>
                   <td style={{ padding: '8px 12px' }}>Rs. {parseFloat(top.price).toFixed(2)}</td>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   getLocationPricing, setLocationPricing, deleteLocationPricing,
-  getProductSizes, getProducts, getToppings, getCrusts,
+  getProductSizes, getProducts, getToppings, getCrusts, getCategories,
 } from '../services/api';
 import { useToast } from '../context';
 import { Spinner } from './UI';
@@ -18,55 +18,79 @@ export default function LocationPricing({ locationId, locationName, onClose }) {
   const [allSizes, setAllSizes] = useState([]);
   const [allCrusts, setAllCrusts] = useState([]);
   const [allToppings, setAllToppings] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
+  const [selectedCat, setSelectedCat] = useState('all');
 
   // Existing overrides
   const [overrides, setOverrides] = useState({ sizes: [], crusts: [], toppings: [] });
 
-  // Edited prices: { 'size_<id>': price, 'crust_<id>': price, 'topping_<id>': price }
+  // { 'size_<id>': price, 'crust_<id>': price, 'topping_<id>': price }
   const [edited, setEdited] = useState({});
 
   useEffect(() => {
     setLoading(true);
     Promise.all([
       getLocationPricing(locationId),
-      getProducts({ limit: 200 }),
+      getCategories(),
       getToppings(),
       getCrusts(),
     ])
-      .then(([pricingRes, productsRes, toppingsRes, crustsRes]) => {
+      .then(([pricingRes, catsRes, toppingsRes, crustsRes]) => {
         const pricingData = pricingRes.data || {};
         setOverrides({
           sizes: pricingData.sizes || [],
           crusts: pricingData.crusts || [],
           toppings: pricingData.toppings || [],
         });
+        setAllCategories(catsRes.data || []);
+        setAllCrusts(crustsRes.data || []);
+        setAllToppings(toppingsRes.data || []);
 
-        // Build sizes from all products
-        const products = productsRes.data?.data || productsRes.data || [];
-        const sizePromises = products.map(p =>
-          getProductSizes(p.id).then(r => (r.data?.sizes || []).map(s => ({ ...s, product_name: p.name }))).catch(() => [])
-        );
-        return Promise.all(sizePromises).then(sizeSets => {
-          setAllSizes(sizeSets.flat());
-          setAllCrusts(crustsRes.data || []);
-          setAllToppings(toppingsRes.data || []);
+        const init = {};
+        (pricingData.sizes || []).forEach(o => { init[`size_${o.product_size_id}`] = o.price; });
+        (pricingData.crusts || []).forEach(o => { init[`crust_${o.crust_id}`] = o.extra_price; });
+        (pricingData.toppings || []).forEach(o => { init[`topping_${o.topping_id}`] = o.price; });
+        (pricingData.crust_size_overrides || []).forEach(o => { init[`crust_${o.crust_id}_${o.size_code}`] = o.extra_price; });
+        (pricingData.topping_size_overrides || []).forEach(o => { init[`topping_${o.topping_id}_${o.size_code}`] = o.price; });
+        setEdited(init);
 
-          // Pre-fill edited prices from existing overrides
-          const init = {};
-          (pricingData.sizes || []).forEach(o => { init[`size_${o.product_size_id}`] = o.price; });
-          (pricingData.crusts || []).forEach(o => { init[`crust_${o.crust_id}`] = o.extra_price; });
-          (pricingData.toppings || []).forEach(o => { init[`topping_${o.topping_id}`] = o.price; });
-          
-          // Size-specific overrides
-          (pricingData.crust_size_overrides || []).forEach(o => { init[`crust_${o.crust_id}_${o.size_code}`] = o.extra_price; });
-          (pricingData.topping_size_overrides || []).forEach(o => { init[`topping_${o.topping_id}_${o.size_code}`] = o.price; });
-
-          setEdited(init);
-        });
+        // Load INITIAL products and sizes
+        return fetchProductsAndSizes('all');
       })
       .catch(e => toast(e.message, 'error'))
       .finally(() => setLoading(false));
   }, [locationId]);
+
+  const fetchProductsAndSizes = async (categoryId) => {
+    try {
+      const params = { limit: 500 };
+      if (categoryId !== 'all') params.category_id = categoryId;
+      
+      const productsRes = await getProducts(params);
+      const products = productsRes.data?.data || productsRes.data || [];
+      
+      // Batch fetch sizes to be more efficient (still separate calls but limited by products in cat)
+      const sizePromises = products.map(p =>
+        getProductSizes(p.id).then(r => (r.data?.sizes || []).map(s => ({ 
+          ...s, 
+          product_name: p.name,
+          category_id: p.category_id 
+        }))).catch(() => [])
+      );
+      
+      const sizeSets = await Promise.all(sizePromises);
+      setAllSizes(sizeSets.flat());
+    } catch (e) {
+      toast('Failed to load products: ' + e.message, 'error');
+    }
+  };
+
+  const handleCategoryChange = async (catId) => {
+    setSelectedCat(catId);
+    setLoading(true);
+    await fetchProductsAndSizes(catId);
+    setLoading(false);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -118,16 +142,29 @@ export default function LocationPricing({ locationId, locationName, onClose }) {
         Set custom prices for this location. Leave blank to use the default price.
       </p>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
-        {TABS.map((t, i) => (
-          <button key={t}
-            className={`btn btn-sm ${tab === i ? 'btn-primary' : 'btn-ghost'}`}
-            style={{ borderRadius: '6px 6px 0 0' }}
-            onClick={() => setTab(i)}>
-            {t}
-          </button>
-        ))}
+      {/* Tabs and Filter */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
+          {TABS.map((t, i) => (
+            <button key={t}
+              className={`btn btn-sm ${tab === i ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ borderRadius: '6px 6px 0 0' }}
+              onClick={() => setTab(i)}>
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {tab === 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span className="text-xs font-semi text-muted">Category:</span>
+            <select className="input" style={{ width: 150, height: 32, fontSize: '0.8rem', padding: '0 8px' }}
+              value={selectedCat} onChange={e => handleCategoryChange(e.target.value)}>
+              <option value="all">All Products</option>
+              {allCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Table */}
