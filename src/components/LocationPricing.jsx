@@ -79,7 +79,23 @@ export default function LocationPricing({ locationId, locationName, onClose }) {
       );
       
       const sizeSets = await Promise.all(sizePromises);
-      setAllSizes(sizeSets.flat());
+      const allItems = [];
+      products.forEach((p, i) => {
+        const productSizes = sizeSets[i];
+        if (productSizes && productSizes.length > 0) {
+          allItems.push(...productSizes);
+        } else {
+          allItems.push({
+            id: `base-${p.id}`,
+            product_id: p.id,
+            product_name: p.name,
+            size_name: 'Base Price (No sizes)',
+            price: p.base_price,
+            no_sizes: true
+          });
+        }
+      });
+      setAllSizes(allItems);
     } catch (e) {
       toast('Failed to load products: ' + e.message, 'error');
     }
@@ -186,19 +202,20 @@ export default function LocationPricing({ locationId, locationName, onClose }) {
                 </td>
                 <td style={{ padding: '8px 12px' }}>Rs. {parseFloat(size.price).toFixed(2)}</td>
                 <td style={{ padding: '8px 12px' }}>
-                  <input className="input" type="number" step="0.01" placeholder="Default"
-                    style={{ width: 120 }}
+                  <input className="input" type="number" step="0.01" 
+                    placeholder={size.no_sizes ? "Action required" : "Default"}
+                    disabled={size.no_sizes}
+                    title={size.no_sizes ? "Add a size in Menu to set price" : ""}
+                    style={{ width: 120, opacity: size.no_sizes ? 0.6 : 1 }}
                     value={getOverridePrice('size', size.id)}
                     onChange={e => setPrice('size', size.id, e.target.value)} />
+                  {size.no_sizes && <div className="text-xs text-danger" style={{marginTop: 2}}>Need size in Menu</div>}
                 </td>
               </tr>
             ))}
             {tab === 1 && allCrusts.map(crust => (
               ['regular', 'medium', 'large'].map(sz => {
                 const sName = sz.charAt(0).toUpperCase() + sz.slice(1);
-                // Find default size-based price if it exists
-                const sDef = allSizes.find(s => s.size_code === sz); // Not quite right, sizes are per product
-                // Actually, the defaults for crust/topping sizes are in the new Matrix too, but I'll simpler it.
                 return (
                   <tr key={`${crust.id}_${sz}`} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '8px 12px' }}>

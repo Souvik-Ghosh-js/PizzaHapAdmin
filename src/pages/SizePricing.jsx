@@ -53,7 +53,23 @@ export default function SizePricing() {
         getProductSizes(p.id).then(r => (r.data?.sizes || []).map(s => ({ ...s, product_name: p.name, product_id: p.id }))).catch(() => [])
       );
       const sizeSets = await Promise.all(sizePromises);
-      setAllSizes(sizeSets.flat());
+      const allItems = [];
+      prods.forEach((p, i) => {
+        const productSizes = sizeSets[i];
+        if (productSizes && productSizes.length > 0) {
+          allItems.push(...productSizes);
+        } else {
+          allItems.push({
+            id: `base-${p.id}`,
+            product_id: p.id,
+            product_name: p.name,
+            size_name: 'Base Price (No sizes)',
+            price: p.base_price,
+            no_sizes: true
+          });
+        }
+      });
+      setAllSizes(allItems);
     } catch (e) { toast(e.message, 'error'); }
   };
 
@@ -156,10 +172,13 @@ export default function SizePricing() {
                   <td style={{ padding: '8px 12px' }}>Rs. {parseFloat(size.price).toFixed(2)}</td>
                   <td style={{ padding: '8px 12px' }}>
                     <input className="input" type="number" step="0.01"
-                      placeholder={parseFloat(size.price).toFixed(2)}
-                      style={{ width: 120 }}
+                      placeholder={size.no_sizes ? "Action required" : parseFloat(size.price).toFixed(2)}
+                      disabled={size.no_sizes}
+                      title={size.no_sizes ? "Add a size in Menu to set price" : ""}
+                      style={{ width: 120, opacity: size.no_sizes ? 0.6 : 1 }}
                       value={getVal('product', size.product_id, size.id)}
                       onChange={e => setVal('product', size.product_id, size.id, e.target.value)} />
+                    {size.no_sizes && <div className="text-xs text-danger" style={{marginTop: 2}}>Need size in Menu</div>}
                   </td>
                 </tr>
               ))}
