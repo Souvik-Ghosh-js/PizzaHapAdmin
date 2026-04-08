@@ -227,6 +227,7 @@ export const setSizePricing    = (data)  => post('/size-pricing', data);
 export const deleteSizePricing = (id, type) => del(`/size-pricing/${id}?type=${type}`);
 
 // ── Reviews ───────────────────────────────────────────────────────
+// ── Reviews ───────────────────────────────────────────────────────
 export const getReviews = (params = {}) => {
   const admin = getAdminInfo();
   const merged = { ...params };
@@ -234,3 +235,9 @@ export const getReviews = (params = {}) => {
   const q = new URLSearchParams(Object.entries(merged).filter(([,v]) => v != null && v !== '')).toString();
   return get(`/reviews${q ? '?' + q : ''}`);
 };
+
+// ── Admin Management ──────────────────────────────────────────────
+export const getAllAdmins    = ()          => get('/manage-admins');
+export const createAdmin      = (data)      => post('/manage-admins', data);
+export const updateAdmin      = (id, data)  => put(`/manage-admins/${id}`, data);
+export const deleteAdminAccount= (id)        => del(`/manage-admins/${id}`);

@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../context';
+import { ShieldCheck } from 'lucide-react';
 
 /* ── Inline SVG Icon helper ─────────────────────────────── */
 const Icon = ({ d, size = 18 }) => (
@@ -32,7 +33,8 @@ const ICONS = {
   chevronRight:  'M9 18l6-6-6-6',
   reviews:       'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
   sales:         'M18 20V10M12 20V4M6 20v-6',
-  banners:       ['M4 3h16a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z','M4 11h10a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z','M4 19h6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1z']
+  banners:       ['M4 3h16a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z','M4 11h10a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z','M4 19h6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1z'],
+  admins:        ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z','M12 8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z']
 };
 
 const NAV_SECTIONS = [
@@ -42,6 +44,7 @@ const NAV_SECTIONS = [
       { to: '/',        icon: 'dashboard',     label: 'Dashboard' },
       { to: '/orders',  icon: 'orders',        label: 'Orders'    },
       { to: '/inhouse', icon: 'inhouse',       label: 'In-House'  },
+      { to: '/admins',  icon: 'admins',        label: 'Admins', adminOnly: true },
     ]
   },
   {
@@ -111,7 +114,8 @@ export default function Sidebar({ collapsed, onToggle, unreadCount, mobileOpen, 
           {NAV_SECTIONS.map(sec => (
             <div className="nav-section" key={sec.label}>
               {!collapsed && <div className="nav-section-label">{sec.label}</div>}
-              {sec.items.map(({ to, icon, label }) => {
+              {sec.items.map(({ to, icon, label, adminOnly }) => {
+                if (adminOnly && admin?.role !== 'super_admin') return null;
                 const active   = isActive(to);
                 const hasNotif = to === '/notifications' && unreadCount > 0;
                 return (

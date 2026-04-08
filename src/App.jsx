@@ -17,6 +17,7 @@ import Riders from './pages/Riders';
 import Reviews from './pages/Reviews';
 import SalesReport from './pages/SalesReport';
 import Banners from './pages/Banners';
+import Admins from './pages/Admins';
 import SizePricing from './pages/SizePricing';
 
 function Layout() {
@@ -117,7 +118,8 @@ function Layout() {
             <Route path="/locations"     element={<Locations />} />
             <Route path="/coupons"       element={<Coupons />} />
             <Route path="/banners"       element={<Banners />} />
-            <Route path="/riders"        element={<Riders />} />
+            <Route path="/riders"            element={<Riders />} />
+            <Route path="/admins"            element={<Admins />} />
             <Route path="/refunds"       element={<Refunds />} />
             <Route path="/support"       element={<Support />} />
             <Route path="/notifications" element={<Notifications />} />
