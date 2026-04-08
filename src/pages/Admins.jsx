@@ -1,46 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  Users, Plus, Edit2, Trash2, Shield, MapPin, 
-  Check, X, Search, Loader2, AlertCircle 
-} from 'lucide-react';
-import { getAllAdmins, createAdmin, updateAdmin, deleteAdminAccount, getLocations } from '../services/api';
+  getAllAdmins, createAdmin, updateAdmin, deleteAdminAccount, getLocations 
+} from '../services/api';
+import { 
+  Spinner, Badge, Modal, Confirm, Field, 
+  SearchInput, Select, Toggle, PageHeader, SectionCard, KpiCard, EmptyState 
+} from '../components/UI';
+import { useAuth } from '../context';
+import { Shield, Mail, MapPin, Calendar, MoreHorizontal, UserPlus, Key, Trash2 } from 'lucide-react';
 
-const Admins = () => {
+export default function Admins() {
+  const { admin: currentAdmin } = useAuth();
   const [admins, setAdmins] = useState([]);
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [search, setSearch] = useState('');
   
-  // Modal state
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingAdmin, setEditingAdmin] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: 'admin',
-    location_id: '',
-    is_active: true
-  });
+  // Modal states
+  const [showModal, setShowModal] = useState(false);
+  const [showDelete, setShowDelete] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  
+  const [form, setForm] = useState({
+    name: '', email: '', password: '', role: 'admin', location_id: '', is_active: true
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
-  const fetchData = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const [adminsRes, locsRes] = await Promise.all([
-        getAllAdmins(),
-        getLocations()
-      ]);
-      setAdmins(adminsRes.data || []);
-      setLocations(locsRes.data || []);
-      setError(null);
+      const [a, l] = await Promise.all([getAllAdmins(), getLocations()]);
+      setAdmins(a.data || []);
+      setLocations(l.data || []);
     } catch (err) {
-      setError('Failed to fetch data');
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -48,323 +43,229 @@ const Admins = () => {
 
   const handleOpenModal = (admin = null) => {
     if (admin) {
-      setEditingAdmin(admin);
-      setFormData({
+      setEditing(admin);
+      setForm({
         name: admin.name,
         email: admin.email,
-        password: '', // Password field blank when editing
+        password: '',
         role: admin.role,
         location_id: admin.location_id || '',
         is_active: admin.is_active === 1
       });
     } else {
-      setEditingAdmin(null);
-      setFormData({
-        name: '',
-        email: '',
-        password: '',
-        role: 'admin',
-        location_id: '',
-        is_active: true
-      });
+      setEditing(null);
+      setForm({ name: '', email: '', password: '', role: 'admin', location_id: '', is_active: true });
     }
-    setIsModalOpen(true);
+    setShowModal(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      if (editingAdmin) {
-        await updateAdmin(editingAdmin.id, formData);
-      } else {
-        await createAdmin(formData);
-      }
-      setIsModalOpen(false);
-      fetchData();
+      if (editing) await updateAdmin(editing.id, form);
+      else await createAdmin(form);
+      setShowModal(false);
+      loadData();
     } catch (err) {
-      alert(err.message || 'Action failed');
+      alert(err.message || 'Saving failed');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this admin account?')) return;
+  const handleDelete = async () => {
     try {
-      await deleteAdminAccount(id);
-      fetchData();
+      setSubmitting(true);
+      await deleteAdminAccount(showDelete.id);
+      setShowDelete(null);
+      loadData();
     } catch (err) {
       alert(err.message || 'Delete failed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const filteredAdmins = admins.filter(a => 
-    a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.email.toLowerCase().includes(searchQuery.toLowerCase())
+  const filtered = admins.filter(a => 
+    a.name.toLowerCase().includes(search.toLowerCase()) || 
+    a.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (loading && admins.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-orange-500 mb-4" />
-        <p className="text-gray-500">Loading admin accounts...</p>
-      </div>
-    );
-  }
+  if (loading && admins.length === 0) return <div className="loading-center"><Spinner size="spinner-lg" /></div>;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Shield className="w-6 h-6 text-orange-500" />
-            Admin Management
-          </h1>
-          <p className="text-gray-500">Create and manage branch-specific access</p>
-        </div>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-orange-200"
-        >
-          <Plus className="w-4 h-4" />
-          Create New Admin
-        </button>
+    <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <PageHeader 
+        title="Admin Management" 
+        subtitle="Manage administrative staff and location access"
+        actions={
+          <button className="btn btn-primary" onClick={() => handleOpenModal()}>
+            <UserPlus size={16} /> Create Admin
+          </button>
+        }
+      />
+
+      {/* Stats row */}
+      <div className="stats-grid">
+        <KpiCard label="Total Staff" value={admins.length} icon={<Shield style={{color:'var(--blue)'}}/>} color="var(--blue)" />
+        <KpiCard label="Active" value={admins.filter(a => a.is_active).length} icon={<Shield style={{color:'var(--green)'}}/>} color="var(--green)" />
+        <KpiCard label="Super Admins" value={admins.filter(a => a.role === 'super_admin').length} icon={<Shield style={{color:'var(--amber)'}}/>} color="var(--amber)" />
       </div>
 
-      {/* Stats/Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <p className="text-sm font-medium text-gray-500 mb-1">Total Staff</p>
-          <p className="text-3xl font-bold text-gray-900">{admins.length}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <p className="text-sm font-medium text-gray-500 mb-1">Active Accounts</p>
-          <p className="text-3xl font-bold text-green-600">{admins.filter(a => a.is_active).length}</p>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <p className="text-sm font-medium text-gray-500 mb-1">Super Admins</p>
-          <p className="text-3xl font-bold text-orange-600">{admins.filter(a => a.role === 'super_admin').length}</p>
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-        <input 
-          type="text" 
-          placeholder="Search by name or email..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all shadow-sm"
-        />
-      </div>
-
-      {/* Admins Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="bg-gray-50/50 border-b border-gray-100">
-              <th className="px-6 py-4 text-sm font-semibold text-gray-600">Admin Account</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-600">Role</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-600">Assigned Location</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-600">Status</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-600">Last Login</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {filteredAdmins.length === 0 ? (
+      <SectionCard
+        title="Administrative Accounts"
+        noPad
+        actions={<SearchInput value={search} onChange={setSearch} placeholder="Search by name/email..." />}
+      >
+        <div className="table-wrap">
+          <table>
+            <thead>
               <tr>
-                <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                  {searchQuery ? "No admins found matching your search." : "No admin accounts created yet."}
-                </td>
+                <th>Profile</th>
+                <th>Access Level</th>
+                <th>Assigned To</th>
+                <th>Status</th>
+                <th>Last Login</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
-            ) : (
-              filteredAdmins.map((admin) => (
-                <tr key={admin.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="font-semibold text-gray-900">{admin.name}</div>
-                      <div className="text-sm text-gray-500">{admin.email}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                      admin.role === 'super_admin' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {admin.role.replace('_', ' ').toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-gray-700">
-                      {admin.location_name ? (
-                        <>
-                          <MapPin className="w-4 h-4 text-gray-400" />
-                          <span>{admin.location_name}</span>
-                        </>
-                      ) : (
-                        <span className="text-gray-400 italic font-medium">All Locations</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
-                      admin.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                      {admin.is_active ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                      {admin.is_active ? 'Active' : 'Disabled'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {admin.last_login ? new Date(admin.last_login).toLocaleString() : 'Never'}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button 
-                        onClick={() => handleOpenModal(admin)}
-                        className="p-2 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-all"
-                        title="Edit Admin"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(admin.id)}
-                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                        title="Delete Account"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan="6"><EmptyState title="No admins found" subtitle={search ? "Try a different search" : "Get started by creating your first team member"} /></td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Create/Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900">
-                {editingAdmin ? 'Edit Admin Account' : 'Create New Admin'}
-              </h2>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input 
-                  type="text" 
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-                  placeholder="e.g. John Doe"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                <input 
-                  type="email" 
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-                  placeholder="admin@example.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password {editingAdmin && '(Leave blank to keep current)'}
-                </label>
-                <input 
-                  type="password" 
-                  required={!editingAdmin}
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-                  placeholder="Minimum 6 characters"
-                  minLength={6}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                  <select 
-                    value={formData.role}
-                    onChange={(e) => setFormData({...formData, role: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-                  >
-                    <option value="admin">Admin</option>
-                    <option value="staff">Staff</option>
-                    <option value="super_admin">Super Admin</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                  <select 
-                    value={formData.location_id}
-                    onChange={(e) => setFormData({...formData, location_id: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-                  >
-                    <option value="">All Locations</option>
-                    {locations.map(loc => (
-                      <option key={loc.id} value={loc.id}>{loc.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 py-2">
-                <input 
-                  type="checkbox" 
-                  id="is_active"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
-                  className="w-4 h-4 text-orange-500"
-                />
-                <label htmlFor="is_active" className="text-sm text-gray-700 font-medium">
-                  Active Account
-                </label>
-              </div>
-
-              <div className="flex gap-3 pt-6">
-                <button 
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-orange-200 flex items-center justify-center gap-2"
-                >
-                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {editingAdmin ? 'Update Admin' : 'Create Admin'}
-                </button>
-              </div>
-            </form>
-          </div>
+              ) : (
+                filtered.map(a => (
+                  <tr key={a.id}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                        <div className="admin-avatar" style={{ width: 40, height: 40, fontSize: 16 }}>
+                          {a.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{a.name}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Mail size={12} /> {a.email}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <Badge status={a.role === 'super_admin' ? 'confirmed' : 'open'}>
+                        {a.role.replace('_', ' ')}
+                      </Badge>
+                    </td>
+                    <td>
+                      {a.location_name ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
+                          <MapPin size={14} style={{ color: 'var(--text-muted)' }} />
+                          {a.location_name}
+                        </div>
+                      ) : (
+                        <span className="badge badge-inactive">All Branches</span>
+                      )}
+                    </td>
+                    <td>
+                      <Badge status={a.is_active ? 'active' : 'blocked'}>
+                        {a.is_active ? 'Enabled' : 'Disabled'}
+                      </Badge>
+                    </td>
+                    <td>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Calendar size={14} />
+                        {a.last_login ? new Date(a.last_login).toLocaleDateString() : 'Never'}
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                        <button className="btn btn-ghost btn-icon" onClick={() => handleOpenModal(a)} title="Edit Account">
+                          <MoreHorizontal size={16} />
+                        </button>
+                        {a.id !== currentAdmin?.id && (
+                          <button className="btn btn-ghost btn-danger btn-icon" onClick={() => setShowDelete(a)} title="Delete Account">
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </SectionCard>
+
+      {/* Edit/Create Modal */}
+      <Modal 
+        open={showModal} 
+        onClose={() => setShowModal(false)} 
+        title={editing ? `Edit ${editing.name}` : 'New Admin Account'}
+        footer={<>
+          <button className="btn btn-ghost" onClick={() => setShowModal(false)} disabled={submitting}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>
+            {submitting ? <Spinner className="spinner-sm" /> : editing ? 'Update Account' : 'Create Account'}
+          </button>
+        </>}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <Field label="Full Name" required>
+            <input type="text" className="input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="e.g. John Doe" />
+          </Field>
+          
+          <Field label="Email Address" required>
+            <input type="email" className="input" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="admin@pizzahap.com" />
+          </Field>
+
+          <Field label={editing ? "Update Password" : "Password"} hint={editing ? "Leave blank to keep current" : "Minimum 6 characters"} required={!editing}>
+            <div style={{ position: 'relative' }}>
+              <Key size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input type="password" style={{ paddingLeft: 34 }} className="input" value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder="••••••" />
+            </div>
+          </Field>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <Field label="Role">
+              <Select 
+                placeholder={null}
+                value={form.role} 
+                onChange={v => setForm({...form, role: v})}
+                options={[
+                  { value: 'admin', label: 'Branch Admin' },
+                  { value: 'staff', label: 'Branch Staff' },
+                  { value: 'super_admin', label: 'Super Admin' },
+                ]}
+              />
+            </Field>
+
+            <Field label="Assign Location">
+              <Select 
+                placeholder="Global (All Branches)"
+                value={form.location_id} 
+                onChange={v => setForm({...form, location_id: v})}
+                options={locations.map(l => ({ value: l.id, label: l.name }))}
+              />
+            </Field>
+          </div>
+
+          <Field>
+            <Toggle label="Account Enabled" checked={form.is_active} onChange={v => setForm({...form, is_active: v})} />
+          </Field>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation */}
+      <Confirm 
+        open={!!showDelete}
+        onClose={() => setShowDelete(null)}
+        onConfirm={handleDelete}
+        title="Delete Admin Account"
+        message={`Are you sure you want to delete ${showDelete?.name}? This action cannot be undone and they will immediately lose access.`}
+        danger
+        loading={submitting}
+      />
     </div>
   );
-};
+}
 
-export default Admins;
