@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { getBanners, createBanner, updateBanner, deleteBanner } from '../services/api';
+import { useEffect, useState, useMemo } from 'react';
+import { getBanners, createBanner, updateBanner, deleteBanner, uploadBannerImage } from '../services/api';
 import { Badge, Spinner, Modal, Field, Toggle, PageHeader } from '../components/UI';
 import { useToast } from '../context';
 
@@ -22,6 +22,7 @@ export default function Banners() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
+  const [imgFile, setImg] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const load = () => {
@@ -41,13 +42,16 @@ export default function Banners() {
     }
     setSaving(true);
     try {
+      let bannerId = form.id;
       if (modal === 'create') {
-        await createBanner(form);
+        const r = await createBanner(form);
+        bannerId = r.data?.banner_id ?? r.data?.id;
         toast('Banner created', 'success');
       } else {
         await updateBanner(form.id, form);
         toast('Banner updated', 'success');
       }
+      if (imgFile && bannerId) await uploadBannerImage(bannerId, imgFile).catch(() => {});
       setModal(null);
       load();
     } catch (e) {
@@ -70,6 +74,11 @@ export default function Banners() {
 
   const F = k => ({ value: form[k] ?? '', onChange: e => setForm(f => ({ ...f, [k]: e.target.value })) });
 
+  // Local preview URL for a newly selected file; falls back to the saved banner image.
+  const filePreview = useMemo(() => (imgFile ? URL.createObjectURL(imgFile) : null), [imgFile]);
+  useEffect(() => () => { if (filePreview) URL.revokeObjectURL(filePreview); }, [filePreview]);
+  const previewImg = filePreview || form.image_url || null;
+
   const defaultForm = {
     badge_text: '', title_text: '', gradient_start: '#991515', gradient_end: '#FF6B35',
     icon_name: 'local_offer', sort_order: 0, is_active: true, valid_from: '', valid_until: '',
@@ -79,7 +88,7 @@ export default function Banners() {
     <div className="page-enter">
       <PageHeader title="Banners"
         actions={
-          <button className="btn btn-primary" onClick={() => { setForm(defaultForm); setModal('create'); }}>
+          <button className="btn btn-primary" onClick={() => { setForm(defaultForm); setImg(null); setModal('create'); }}>
             + Add Banner
           </button>
         }
@@ -91,9 +100,12 @@ export default function Banners() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1rem' }}>
           {banners.map(b => (
             <div key={b.id} className="card card-pad">
-              {/* Gradient preview */}
+              {/* Gradient / image preview */}
               <div style={{
-                background: `linear-gradient(135deg, ${b.gradient_start}, ${b.gradient_end})`,
+                background: b.image_url
+                  ? `linear-gradient(135deg, rgba(0,0,0,0.45), rgba(0,0,0,0.25)), url(${b.image_url})`
+                  : `linear-gradient(135deg, ${b.gradient_start}, ${b.gradient_end})`,
+                backgroundSize: 'cover', backgroundPosition: 'center',
                 borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', color: '#fff', minHeight: 80,
                 display: 'flex', flexDirection: 'column', justifyContent: 'center',
               }}>
@@ -119,6 +131,7 @@ export default function Banners() {
                       valid_from: b.valid_from ? b.valid_from.slice(0, 16) : '',
                       valid_until: b.valid_until ? b.valid_until.slice(0, 16) : '',
                     });
+                    setImg(null);
                     setModal('edit');
                   }}>Edit</button>
                   <button className="btn btn-sm btn-ghost" style={{ color: 'var(--danger)' }}
@@ -177,9 +190,18 @@ export default function Banners() {
             </Field>
           </div>
 
-          {/* Gradient preview */}
+          <Field label="Banner Image" hint="JPEG, PNG or WebP · optional · overrides gradient in the app">
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="input"
+              style={{ padding: '0.375rem 0.75rem', cursor: 'pointer' }}
+              onChange={e => setImg(e.target.files?.[0] || null)} />
+          </Field>
+
+          {/* Preview */}
           <div style={{
-            background: `linear-gradient(135deg, ${form.gradient_start || '#991515'}, ${form.gradient_end || '#FF6B35'})`,
+            background: previewImg
+              ? `linear-gradient(135deg, rgba(0,0,0,0.45), rgba(0,0,0,0.25)), url(${previewImg})`
+              : `linear-gradient(135deg, ${form.gradient_start || '#991515'}, ${form.gradient_end || '#FF6B35'})`,
+            backgroundSize: 'cover', backgroundPosition: 'center',
             borderRadius: 8, padding: '0.75rem 1rem', color: '#fff', fontSize: '0.8rem',
           }}>
             Preview: {form.badge_text || 'Badge'} — {form.title_text || 'Title'}

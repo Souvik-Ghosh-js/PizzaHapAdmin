@@ -210,6 +210,10 @@ export const getBanners    = ()          => get('/banners');
 export const createBanner  = (data)      => post('/banners', data);
 export const updateBanner  = (id, data)  => put(`/banners/${id}`, data);
 export const deleteBanner  = (id)        => del(`/banners/${id}`);
+export const uploadBannerImage = (id, file) => {
+  const fd = new FormData(); fd.append('image', file);
+  return postForm(`/banners/${id}/image`, fd);
+};
 
 // ── Geofences ────────────────────────────────────────────────────
 export const getGeofence   = (locId)       => get(`/locations/${locId}/geofence`);
