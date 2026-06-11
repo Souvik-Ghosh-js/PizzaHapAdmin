@@ -155,8 +155,8 @@ export default function Orders() {
           <div class="bill-info">
             <div>
               <div style="color:#999; text-transform:uppercase; font-size:10px; font-weight:800; margin-bottom:6px; letter-spacing: 0.05em;">Customer Details</div>
-              <div style="font-weight:700; font-size:16px;">${order.user_name || 'Walk-in Customer'}</div>
-              <div style="color: #555; margin-top: 2px;">${order.user_mobile || ''}</div>
+              <div style="font-weight:700; font-size:16px;">${order.contact_name || order.user_name || 'Walk-in Customer'}</div>
+              <div style="color: #555; margin-top: 2px;">${order.contact_mobile || order.user_mobile || ''}</div>
               ${order.delivery_address ? `<div style="max-width:240px; color: #666; margin-top: 4px; font-size: 12px;">${order.delivery_address}</div>` : ''}
               <div style="margin-top: 8px; font-weight: 700; color: #CC1F1F; font-size: 11px;">[ ${order.delivery_type.toUpperCase()} ]</div>
             </div>
@@ -233,8 +233,8 @@ export default function Orders() {
                         <div className="text-xs text-muted" style={{textTransform:'capitalize'}}>{(o.payment_method||'').replace(/_/g,' ')}</div>
                       </td>
                       <td>
-                        <div className="font-medium" style={{fontSize:'0.875rem'}}>{o.user_name||'Walk-in'}</div>
-                        <div className="text-xs text-muted">{o.user_mobile||'—'}</div>
+                        <div className="font-medium" style={{fontSize:'0.875rem'}}>{o.contact_name||o.user_name||'Walk-in'}</div>
+                        <div className="text-xs text-muted">{o.contact_mobile||o.user_mobile||'—'}</div>
                       </td>
                       <td><span className="text-sm text-secondary">{o.location_name||'—'}</span></td>
                       <td>
@@ -379,8 +379,8 @@ function OrderDetail({ order, onRefresh }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
         <SectionCard title="👤 Customer Details">
-          <InfoRow label="Name">{order.user_name || 'Walk-in'}</InfoRow>
-          <InfoRow label="Mobile">{order.user_mobile || '—'}</InfoRow>
+          <InfoRow label="Name">{order.contact_name || order.user_name || 'Walk-in'}</InfoRow>
+          <InfoRow label="Mobile">{order.contact_mobile || order.user_mobile || '—'}</InfoRow>
           <InfoRow label="Email">{order.user_email || '—'}</InfoRow>
           <InfoRow label="Branch">{order.location_name || '—'}</InfoRow>
           <InfoRow label="Type">{order.delivery_type === 'delivery' ? '🛵 Delivery' : '🏪 Pickup'}</InfoRow>
