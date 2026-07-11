@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, NavLink, useNavigate, useLocati
 import { io } from 'socket.io-client';
 import { AuthProvider, ToastProvider, useAuth, useToast } from './context';
 import { getNotifications } from './services/api';
-import { playOrderAlert, playCancelAlert, stopAlertLoop } from './utils/notificationSound';
+import { playOrderAlert, playCancelAlert, stopAlertLoop, initAudioUnlock } from './utils/notificationSound';
 
 import Sidebar   from './components/Sidebar';
 import Header    from './components/Header';
@@ -52,6 +52,12 @@ function Layout() {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
+  }, []);
+
+  // Unlock audio on first user interaction so alert sounds can play
+  // from socket events (browser autoplay policy)
+  useEffect(() => {
+    initAudioUnlock();
   }, []);
 
   // Real-time notifications via Socket.IO
