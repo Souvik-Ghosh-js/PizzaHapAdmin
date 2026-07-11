@@ -10,6 +10,8 @@ const cancelAudio = new Audio('/sounds/order-cancelled.mp3');
 
 let _activeAudio = null;
 let _playsLeft = 0;
+let _pendingAlert = null;  // alert blocked by autoplay policy, waiting for a user gesture
+let _unlocked = false;
 
 function _handleEnded() {
   _playsLeft -= 1;
@@ -27,13 +29,19 @@ cancelAudio.addEventListener('ended', _handleEnded);
 
 function _playAlert(audio) {
   stopAlertLoop();
+  _pendingAlert = null;
   _activeAudio = audio;
   _playsLeft = PLAY_COUNT;
   audio.currentTime = 0;
-  audio.play().catch(() => {
+  audio.play().then(() => {
+    _unlocked = true;
+  }).catch(() => {
     // Autoplay blocked — browser requires a user interaction first.
+    // Keep the alert pending so it plays on the next click/keypress
+    // instead of being silently dropped.
     _activeAudio = null;
     _playsLeft = 0;
+    _pendingAlert = audio;
   });
 }
 
@@ -61,6 +69,7 @@ export function stopAlertLoop() {
     _activeAudio = null;
   }
   _playsLeft = 0;
+  _pendingAlert = null;
 }
 
 /**
@@ -76,18 +85,28 @@ export function isAlertLooping() {
  * Call once at app startup.
  */
 export function initAudioUnlock() {
-  const unlock = () => {
+  const onGesture = () => {
+    // An alert arrived while audio was still locked — play it now.
+    if (_pendingAlert) {
+      const audio = _pendingAlert;
+      _pendingAlert = null;
+      _playAlert(audio);
+      return;
+    }
+    // Otherwise prime the audio elements once so future alerts can
+    // play without a gesture. Listeners stay attached permanently:
+    // they're cheap and also cover pending alerts later on.
+    if (_unlocked || _activeAudio) return;
     [orderAudio, cancelAudio].forEach(a => {
       a.muted = true;
       a.play().then(() => {
         a.pause();
         a.currentTime = 0;
         a.muted = false;
+        _unlocked = true;
       }).catch(() => { a.muted = false; });
     });
-    document.removeEventListener('click', unlock);
-    document.removeEventListener('keydown', unlock);
   };
-  document.addEventListener('click', unlock);
-  document.addEventListener('keydown', unlock);
+  document.addEventListener('click', onGesture);
+  document.addEventListener('keydown', onGesture);
 }
