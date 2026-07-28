@@ -32,6 +32,9 @@ export default function InHouse() {
   const [appliedCoupon, setAppliedCoupon] = useState(null); // validated response
   const [couponError, setCouponError]     = useState('');
   const [validating, setValidating]       = useState(false);
+  // Payable extras for the BOGO free pizza (base pizza is free; extras are charged)
+  const [freeCrustId, setFreeCrustId]         = useState(null);
+  const [freeToppingIds, setFreeToppingIds]   = useState([]);
 
   // Modal state
   const [selectedProduct, setSP]    = useState(null);   // full product object
@@ -165,8 +168,9 @@ export default function InHouse() {
   };
 
   const subtotal = parseFloat(cart.reduce((s, i) => s + itemTotal(i), 0).toFixed(2));
-  // BOGO ladder: Large → free Medium, Medium → free Small (plain — no crust addon/toppings).
-  // No money is cut — the server adds the free item to the order automatically.
+  // BOGO ladder: Large → free Medium, Medium → free Small. Base pizza is free;
+  // crust addons/toppings picked for it are payable. No money is cut — the
+  // server adds the free item (with billed extras) to the order automatically.
   const sizeRank = (code, name) => {
     const ranks = {
       small: 0, sm: 0, s: 0, regular: 0, reg: 0, r: 0,
@@ -199,7 +203,15 @@ export default function InHouse() {
     return null;
   })();
   const discount = appliedCoupon?.is_bogo ? 0 : (appliedCoupon?.calculated_discount || 0);
-  const total    = parseFloat(Math.max(0, subtotal - discount).toFixed(2));
+  // Estimated cost of payable extras on the free pizza (server bills exact size/branch price)
+  const freeExtrasEstimate = (() => {
+    if (!appliedCoupon?.is_bogo || !bogoFreeItem) return 0;
+    let t = 0;
+    if (freeCrustId) t += parseFloat(crusts.find(c => c.id === freeCrustId)?.extra_price) || 0;
+    for (const tid of freeToppingIds) t += parseFloat(toppings.find(tp => tp.id === tid)?.price) || 0;
+    return t;
+  })();
+  const total    = parseFloat(Math.max(0, subtotal + freeExtrasEstimate - discount).toFixed(2));
 
   const applyCoupon = async () => {
     const code = couponInput.trim().toUpperCase();
@@ -210,6 +222,7 @@ export default function InHouse() {
       const r = await validateCoupon(code, subtotal);
       setAppliedCoupon(r.data);
       setCouponInput('');
+      setFreeCrustId(null); setFreeToppingIds([]);
     } catch (e) {
       setCouponError(e.message);
       setAppliedCoupon(null);
@@ -218,7 +231,10 @@ export default function InHouse() {
     }
   };
 
-  const removeCoupon = () => { setAppliedCoupon(null); setCouponError(''); setCouponInput(''); };
+  const removeCoupon = () => {
+    setAppliedCoupon(null); setCouponError(''); setCouponInput('');
+    setFreeCrustId(null); setFreeToppingIds([]);
+  };
 
   // ── Place order ─────────────────────────────────────────────────
   const place = async () => {
@@ -246,11 +262,14 @@ export default function InHouse() {
         ...(customerName.trim() ? { customer_name: customerName.trim() } : {}),
         ...(customerPhone.trim() ? { customer_phone: customerPhone.trim() } : {}),
         ...(appliedCoupon ? { coupon_code: appliedCoupon.code } : {}),
+        ...(appliedCoupon?.is_bogo && bogoFreeItem && freeCrustId ? { free_item_crust_id: freeCrustId } : {}),
+        ...(appliedCoupon?.is_bogo && bogoFreeItem && freeToppingIds.length ? { free_item_toppings: freeToppingIds } : {}),
       });
 
       setSuccess(r.data);
       setCart([]); setUserId(''); setCustomerName(''); setCustomerPhone('');
       setAppliedCoupon(null); setCouponInput(''); setCouponError('');
+      setFreeCrustId(null); setFreeToppingIds([]);
       toast(`Order ${r.data.order_number} placed!`, 'success');
     } catch (e) { toast(e.message, 'error'); }
     finally { setPlacing(false); }
@@ -382,6 +401,11 @@ export default function InHouse() {
                       </span>
                     </div>
                   )}
+                  {freeExtrasEstimate > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: 4, color: 'var(--text-muted)' }}>
+                      <span>Free pizza extras</span><span>+{fmt.currency(freeExtrasEstimate)}</span>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.0625rem', fontFamily: 'var(--font-head)', paddingTop: '0.625rem', borderTop: '1px solid var(--border)' }}>
                     <span>Total</span><span className="text-accent">{fmt.currency(total)}</span>
                   </div>
@@ -416,6 +440,29 @@ export default function InHouse() {
                 </div>
               )}
               {couponError && <div style={{ fontSize: '0.75rem', color: 'var(--red)', marginTop: '0.25rem' }}>{couponError}</div>}
+              {appliedCoupon?.is_bogo && bogoFreeItem && (
+                <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                  <div className="text-xs text-muted">
+                    Extras for the free {bogoFreeItem.size_name} {bogoFreeItem.name} (payable):
+                  </div>
+                  <select className="input" value={freeCrustId || ''}
+                    onChange={e => setFreeCrustId(e.target.value ? parseInt(e.target.value) : null)}>
+                    <option value="">Regular crust (free)</option>
+                    {crusts.map(c => (
+                      <option key={c.id} value={c.id}>{c.name} (+{fmt.currency(parseFloat(c.extra_price) || 0)})</option>
+                    ))}
+                  </select>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {toppings.map(t => (
+                      <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', padding: '2px 8px', cursor: 'pointer', background: freeToppingIds.includes(t.id) ? 'var(--accent-dim)' : 'transparent' }}>
+                        <input type="checkbox" checked={freeToppingIds.includes(t.id)}
+                          onChange={() => setFreeToppingIds(ids => ids.includes(t.id) ? ids.filter(x => x !== t.id) : [...ids, t.id])} />
+                        {t.name} +{fmt.currency(parseFloat(t.price) || 0)}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Field>
             <Field label="Customer Name">
               <input className="input" type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Walk-in customer name" />
