@@ -165,7 +165,7 @@ export default function InHouse() {
   };
 
   const subtotal = parseFloat(cart.reduce((s, i) => s + itemTotal(i), 0).toFixed(2));
-  // BOGO ladder: Large → free Medium, Medium → free Small (same crust & toppings).
+  // BOGO ladder: Large → free Medium, Medium → free Small (plain — no crust addon/toppings).
   // No money is cut — the server adds the free item to the order automatically.
   const sizeRank = (code, name) => {
     const ranks = {

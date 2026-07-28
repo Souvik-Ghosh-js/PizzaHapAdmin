@@ -910,7 +910,7 @@ export function Coupons() {
                 </select>
                 {form.discount_type === 'buy_1_get_1' && (
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                    Large → free Medium · Medium → free Small (same crust &amp; toppings). Not valid on Small.
+                    Large → free Medium · Medium → free Small (plain — no crust addons or toppings). Not valid on Small.
                   </div>
                 )}
               </Field>
