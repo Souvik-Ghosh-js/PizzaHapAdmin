@@ -906,8 +906,13 @@ export function Coupons() {
                 <select className="input" value={form.discount_type || 'percentage'} onChange={e => setForm(f => ({ ...f, discount_type: e.target.value }))}>
                   <option value="percentage">Percentage (%)</option>
                   <option value="flat">Flat Amount (₹)</option>
-                  <option value="buy_1_get_1">Buy 1 Get 1</option>
+                  <option value="buy_1_get_1">Buy 1 Get 1 (free smaller size)</option>
                 </select>
+                {form.discount_type === 'buy_1_get_1' && (
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                    Large → free Medium · Medium → free Small (same crust &amp; toppings). Not valid on Small.
+                  </div>
+                )}
               </Field>
             </div>
           )}

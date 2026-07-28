@@ -137,6 +137,7 @@ export default function InHouse() {
       return [...prev, {
         key,
         product:              selectedProduct,
+        sizes:                modalSizes,
         size,
         crust_id:             customizing.crust_id,
         crust_name:           crustObj?.name || null,
@@ -164,22 +165,40 @@ export default function InHouse() {
   };
 
   const subtotal = parseFloat(cart.reduce((s, i) => s + itemTotal(i), 0).toFixed(2));
-  const bogoDiscount = (() => {
-    if (!appliedCoupon?.is_bogo) return 0;
+  // BOGO ladder: Large → free Medium, Medium → free Small (same crust & toppings).
+  // No money is cut — the server adds the free item to the order automatically.
+  const sizeRank = (code, name) => {
+    const ranks = {
+      small: 0, sm: 0, s: 0, regular: 0, reg: 0, r: 0,
+      medium: 1, med: 1, m: 1,
+      large: 2, lg: 2, l: 2,
+    };
+    for (const v of [code, name]) {
+      const r = ranks[String(v || '').trim().toLowerCase()];
+      if (r !== undefined) return r;
+    }
+    return -1;
+  };
+  const bogoFreeItem = (() => {
+    if (!appliedCoupon?.is_bogo) return null;
     const ids = appliedCoupon.applicable_product_ids || [];
-    const eligible = ids.length > 0
-      ? cart.filter(i => ids.includes(i.product.id))
-      : cart;
-    if (!eligible.length) return 0;
     const unitPrice = (i) => {
-      const sp = parseFloat(i.size.price) || 0;
+      const sp = parseFloat(i.size?.price) || 0;
       const cp = parseFloat(i.crust_price) || 0;
       const tp = (i.toppings || []).reduce((s, t) => s + (parseFloat(t.price) || 0), 0);
       return sp + cp + tp;
     };
-    return Math.min(...eligible.map(unitPrice));
+    const eligible = (ids.length > 0 ? cart.filter(i => ids.includes(i.product.id)) : cart)
+      .filter(i => sizeRank(i.size?.size_code, i.size?.size_name) >= 1)
+      .sort((a, b) => unitPrice(b) - unitPrice(a));
+    for (const trigger of eligible) {
+      const target = sizeRank(trigger.size?.size_code, trigger.size?.size_name) - 1;
+      const smaller = (trigger.sizes || trigger.product.sizes || []).find(s => sizeRank(s.size_code, s.size_name) === target);
+      if (smaller) return { name: trigger.product.name, size_name: smaller.size_name };
+    }
+    return null;
   })();
-  const discount = appliedCoupon?.is_bogo ? bogoDiscount : (appliedCoupon?.calculated_discount || 0);
+  const discount = appliedCoupon?.is_bogo ? 0 : (appliedCoupon?.calculated_discount || 0);
   const total    = parseFloat(Math.max(0, subtotal - discount).toFixed(2));
 
   const applyCoupon = async () => {
@@ -354,7 +373,13 @@ export default function InHouse() {
                   {appliedCoupon && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: 4, color: 'var(--green)' }}>
                       <span>🎫 {appliedCoupon.code}</span>
-                      <span>{appliedCoupon.is_bogo ? `BOGO −${fmt.currency(discount)}` : `−${fmt.currency(discount)}`}</span>
+                      <span>
+                        {appliedCoupon.is_bogo
+                          ? (bogoFreeItem
+                              ? `FREE: ${bogoFreeItem.name} (${bogoFreeItem.size_name})`
+                              : 'BOGO — needs a Medium/Large pizza')
+                          : `−${fmt.currency(discount)}`}
+                      </span>
                     </div>
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.0625rem', fontFamily: 'var(--font-head)', paddingTop: '0.625rem', borderTop: '1px solid var(--border)' }}>
@@ -373,7 +398,7 @@ export default function InHouse() {
                     <span style={{ color: 'var(--green)', fontWeight: 700 }}>✓</span>
                     <span style={{ fontWeight: 600, fontFamily: 'monospace', color: 'var(--green)' }}>{appliedCoupon.code}</span>
                     <span style={{ color: 'var(--green)', fontSize: '0.75rem' }}>
-                      {appliedCoupon.is_bogo ? '· Buy 1 Get 1 Free' : `· −${fmt.currency(discount)}`}
+                      {appliedCoupon.is_bogo ? '· Buy 1 Get 1 — smaller size free' : `· −${fmt.currency(discount)}`}
                     </span>
                   </div>
                   <button className="btn btn-ghost btn-sm" onClick={removeCoupon} style={{ padding: '0 0.5rem', flexShrink: 0 }}>✕</button>
