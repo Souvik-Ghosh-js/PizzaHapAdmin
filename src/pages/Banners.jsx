@@ -51,7 +51,10 @@ export default function Banners() {
         await updateBanner(form.id, form);
         toast('Banner updated', 'success');
       }
-      if (imgFile && bannerId) await uploadBannerImage(bannerId, imgFile).catch(() => {});
+      if (imgFile && bannerId) {
+        await uploadBannerImage(bannerId, imgFile)
+          .catch(e => toast(`Banner saved but image upload failed: ${e.message}`, 'warning'));
+      }
       setModal(null);
       load();
     } catch (e) {
