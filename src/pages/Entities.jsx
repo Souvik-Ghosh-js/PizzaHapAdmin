@@ -802,6 +802,15 @@ export function Coupons() {
     });
   };
 
+  // applicable_product_ids may arrive as a JSON string from older backends —
+  // normalize to a real array so editing never wipes the selection
+  const idsOf = (c) => {
+    const v = c?.applicable_product_ids;
+    if (Array.isArray(v)) return v;
+    if (typeof v === 'string') { try { return JSON.parse(v) || []; } catch { return []; } }
+    return [];
+  };
+
   const save = async () => {
     setSaving(true);
     try {
@@ -872,7 +881,7 @@ export function Coupons() {
                   <td>
                     {c.discount_type === 'buy_1_get_1'
                       ? <span className="text-xs text-muted">
-                          {c.applicable_product_ids?.length ? `${c.applicable_product_ids.length} item${c.applicable_product_ids.length > 1 ? 's' : ''}` : 'All items'}
+                          {idsOf(c).length ? `${idsOf(c).length} item${idsOf(c).length > 1 ? 's' : ''}` : 'All items'}
                         </span>
                       : <span className="font-bold">{c.discount_type === 'percentage' ? `${c.discount_value}%` : fmt.currency(c.discount_value)}</span>
                     }
@@ -881,7 +890,7 @@ export function Coupons() {
                   <td><span className="text-sm">{c.used_count} / {c.usage_limit || '∞'}</span></td>
                   <td><span className="text-xs text-muted">{fmt.date(c.valid_until)}</span></td>
                   <td><Badge status={c.is_active ? 'active' : 'inactive'}>{c.is_active ? 'Active' : 'Inactive'}</Badge></td>
-                  <td><button className="btn btn-sm btn-ghost" onClick={() => { setProdSearch(''); setForm({ ...c, is_active: !!c.is_active, valid_until: toLocal(c.valid_until), applicable_product_ids: c.applicable_product_ids || [] }); setModal('edit'); }}>Edit</button></td>
+                  <td><button className="btn btn-sm btn-ghost" onClick={() => { setProdSearch(''); setForm({ ...c, is_active: !!c.is_active, valid_until: toLocal(c.valid_until), applicable_product_ids: idsOf(c) }); setModal('edit'); }}>Edit</button></td>
                 </tr>
               ))}
             </tbody>

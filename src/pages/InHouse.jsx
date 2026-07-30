@@ -219,7 +219,8 @@ export default function InHouse() {
     setCouponError('');
     setValidating(true);
     try {
-      const r = await validateCoupon(code, subtotal);
+      const r = await validateCoupon(code, subtotal,
+        cart.map(i => ({ product_id: i.product.id, size_code: i.size?.size_code, size_name: i.size?.size_name })));
       setAppliedCoupon(r.data);
       setCouponInput('');
       setFreeCrustId(null); setFreeToppingIds([]);

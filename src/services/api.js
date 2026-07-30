@@ -158,11 +158,11 @@ export const updateLocation = (id, data)  => put(`/locations/${id}`, data);
 export const getCoupons    = ()          => get('/coupons');
 export const createCoupon  = (data)      => post('/coupons', data);
 export const updateCoupon  = (id, data)  => put(`/coupons/${id}`, data);
-export const validateCoupon = (code, order_value) =>
+export const validateCoupon = (code, order_value, items) =>
   fetch(BASE_PUBLIC + '/coupons/validate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) },
-    body: JSON.stringify({ code, order_value }),
+    body: JSON.stringify({ code, order_value, ...(items?.length ? { items } : {}) }),
   }).then(r => r.json()).then(j => { if (!j.success) throw new Error(j.message || 'Invalid coupon'); return j; });
 
 // ── Riders ────────────────────────────────────────────────────────
